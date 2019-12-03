@@ -5,13 +5,18 @@ use OpenGL::GLUT qw(:all);
 use FindBin qw($Bin);
 use lib $Bin;
 use MotionViewer::Shader;
+use MotionViewer::Buffer;
 
 my $win_id;
 my ($screen_width, $screen_height) = (800, 600);
+my ($shader, $buffer);
 
 sub render {
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
+    $shader->use;
+    $buffer->bind;
+    glDrawArrays(GL_TRIANGLES, 0, 3);
     glutSwapBuffers();
 }
 
@@ -35,6 +40,12 @@ glutReshapeFunc(sub {
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
-my $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
+$shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
+my @vertices = (
+     0.0,  0.5, 0.0,
+    -0.5, -0.5, 0.0,
+     0.5, -0.5, 0.0,
+);
+$buffer = MotionViewer::Buffer->new(1, @vertices);
 
 glutMainLoop();

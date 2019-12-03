@@ -45,6 +45,7 @@ sub load {
     glDeleteShader($vextex);
     glDeleteShader($fragment);
     $this->{shader} = $shader;
+    $this;
 }
 
 sub use {
