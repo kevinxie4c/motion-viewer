@@ -6,10 +6,11 @@ use FindBin qw($Bin);
 use lib $Bin;
 use MotionViewer::Shader;
 use MotionViewer::Buffer;
+use MotionViewer::Camera;
 
 my $win_id;
 my ($screen_width, $screen_height) = (800, 600);
-my ($shader, $buffer);
+my ($shader, $buffer, $camera);
 
 sub render {
     glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -27,12 +28,25 @@ sub keyboard {
     } 
 }
 
+sub mouse {
+    $camera->mouse_handler(@_);
+}
+
+sub motion {
+    $camera->motion_handler(@_);
+    $shader->use;
+    $shader->set_mat4('view', $camera->view_matrix);
+    glutPostRedisplay;
+}
+
 glutInit;
 glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
 glutInitWindowSize($screen_width, $screen_height);
 $win_id = glutCreateWindow("Viewer");
 glutDisplayFunc(\&render);
 glutKeyboardFunc(\&keyboard);
+glutMouseFunc(\&mouse);
+glutMotionFunc(\&motion);
 glutReshapeFunc(sub {
         ($screen_width, $screen_height) = @_;
         glViewport(0, 0, $screen_width, $screen_height);
@@ -42,10 +56,13 @@ die "glewInit failed" unless glewInit() == GLEW_OK;
 
 $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
 my @vertices = (
-     0.0,  0.5, 0.0,
-    -0.5, -0.5, 0.0,
-     0.5, -0.5, 0.0,
+     0.00,  0.25, 0.00,
+    -0.25, -0.25, 0.00,
+     0.25, -0.25, 0.00,
 );
 $buffer = MotionViewer::Buffer->new(1, @vertices);
+$camera = MotionViewer::Camera->new;
+$shader->use;
+$shader->set_mat4('view', $camera->view_matrix);
 
 glutMainLoop();
