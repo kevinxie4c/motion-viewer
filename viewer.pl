@@ -50,6 +50,9 @@ glutMotionFunc(\&motion);
 glutReshapeFunc(sub {
         ($screen_width, $screen_height) = @_;
         glViewport(0, 0, $screen_width, $screen_height);
+        $camera->aspect($screen_width / $screen_height);
+        $shader->use;
+        $shader->set_mat4('proj', $camera->proj_matrix);
     });
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
@@ -61,8 +64,9 @@ my @vertices = (
      0.25, -0.25, 0.00,
 );
 $buffer = MotionViewer::Buffer->new(1, @vertices);
-$camera = MotionViewer::Camera->new;
+$camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 $shader->use;
 $shader->set_mat4('view', $camera->view_matrix);
+$shader->set_mat4('proj', $camera->proj_matrix);
 
 glutMainLoop();
