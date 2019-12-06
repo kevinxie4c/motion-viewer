@@ -7,17 +7,20 @@ use lib $Bin;
 use MotionViewer::Shader;
 use MotionViewer::Buffer;
 use MotionViewer::Camera;
+use MotionViewer::BVH;
 
 my $win_id;
 my ($screen_width, $screen_height) = (800, 600);
 my ($shader, $buffer, $camera);
+my $bvh;
 
 sub render {
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT);
-    $shader->use;
-    $buffer->bind;
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    #$shader->use;
+    #$buffer->bind;
+    #glDrawArrays(GL_TRIANGLES, 0, 3);
+    $bvh->draw;
     glutSwapBuffers();
 }
 
@@ -34,8 +37,8 @@ sub mouse {
 
 sub motion {
     $camera->motion_handler(@_);
-    $shader->use;
-    $shader->set_mat4('view', $camera->view_matrix);
+    #$shader->use;
+    #$shader->set_mat4('view', $camera->view_matrix);
     glutPostRedisplay;
 }
 
@@ -51,22 +54,25 @@ glutReshapeFunc(sub {
         ($screen_width, $screen_height) = @_;
         glViewport(0, 0, $screen_width, $screen_height);
         $camera->aspect($screen_width / $screen_height);
-        $shader->use;
-        $shader->set_mat4('proj', $camera->proj_matrix);
+        #$shader->use;
+        #$shader->set_mat4('proj', $camera->proj_matrix);
     });
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
-$shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
-my @vertices = (
-     0.00,  0.25, 0.00,
-    -0.25, -0.25, 0.00,
-     0.25, -0.25, 0.00,
-);
-$buffer = MotionViewer::Buffer->new(1, @vertices);
+#$shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
+#my @vertices = (
+#     0.00,  0.25, 0.00,
+#    -0.25, -0.25, 0.00,
+#     0.25, -0.25, 0.00,
+#);
+#$buffer = MotionViewer::Buffer->new(1, @vertices);
 $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
-$shader->use;
-$shader->set_mat4('view', $camera->view_matrix);
-$shader->set_mat4('proj', $camera->proj_matrix);
+#$shader->use;
+#$shader->set_mat4('view', $camera->view_matrix);
+#$shader->set_mat4('proj', $camera->proj_matrix);
+
+$bvh = MotionViewer::BVH->load('sample.bvh');
+$bvh->camera($camera);
 
 glutMainLoop();

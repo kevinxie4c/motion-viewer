@@ -10,11 +10,11 @@ sub new {
     $this->yaw(0) unless defined $this->{yaw};
     $this->pitch(0) unless defined $this->{pitch};
     $this->center(GLM::Vec3->new(0)) unless defined $this->{center};
-    $this->distance(1) unless defined $this->{distance};
+    $this->distance(200) unless defined $this->{distance};
     $this->fovy(45) unless defined $this->{fovy};
     $this->aspect(1) unless defined $this->{aspect};
     $this->near(0.1) unless defined $this->{near};
-    $this->far(10) unless defined $this->{far};
+    $this->far(1000) unless defined $this->{far};
     $this->up(GLM::Vec3->new(0, 1, 0));
     $this->update_view_matrix;
     $this;
