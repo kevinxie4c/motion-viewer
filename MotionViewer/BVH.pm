@@ -5,24 +5,42 @@ use Math::Trig;
 use OpenGL::Modern qw(:all);
 use GLM;
 use Carp;
+use strict;
+use warnings;
 
 sub load {
     my $class = shift;
     my $this = $class->SUPER::load(@_);
     $this->frame(0);
-    $this->{shader} = MotionViewer::Shader->load('simple.vs', 'simple.fs');
     
     for my $joint($this->joints) {
         my @vertices;
+
+        # lines
+        #for ($joint->children) {
+        #    push @vertices, (0, 0, 0, $_->offset);
+        #}
+        #if ($joint->end_site) {
+        #    push @vertices, (0, 0, 0, $joint->end_site);
+        #}
+
+        # cube
         for ($joint->children) {
-            push @vertices, (0, 0, 0, $_->offset);
+            push @vertices, &create_cube($_->offset);
         }
         if ($joint->end_site) {
-            push @vertices, (0, 0, 0, $joint->end_site);
+            push @vertices, &create_cube($joint->end_site);
         }
+        #print "@vertices\n";
+        
         if (@vertices) {
-            $this->{buffer}{$joint->name} = MotionViewer::Buffer->new(1, @vertices);
-            $this->{count}{$joint->name} = @vertices / 3;
+            # lines
+            #$this->{buffer}{$joint->name} = MotionViewer::Buffer->new(1, @vertices);
+            #$this->{count}{$joint->name} = @vertices / 3;
+
+            #cube
+            $this->{buffer}{$joint->name} = MotionViewer::Buffer->new(2, @vertices);
+            $this->{count}{$joint->name} = @vertices / 6;
         }
     }
 
@@ -37,6 +55,7 @@ sub frame{
 
 sub shader {
     my $this = shift;
+    $this->{shader} = shift if @_;
     $this->{shader};
 }
 
@@ -106,11 +125,102 @@ sub draw_joint {
     if (exists($this->{buffer}{$joint->name})) {
         $this->{buffer}{$joint->name}->bind;
         my $count = $this->{count}{$joint->name};
-        glDrawArrays(GL_LINES, 0, $count);
+
+        # lines
+        #glDrawArrays(GL_LINES, 0, $count);
+        
+        # cube
+        glDrawArrays(GL_TRIANGLES, 0, $count);
     }
     for ($joint->children) {
         $this->draw_joint($_, $model_matrix);
     }
+}
+
+#   a                e
+#    +--------------+
+#    |\              \
+#    | \ d            \ h
+#    |  +--------------+
+#    |  |              |
+#    +  |           +  |
+#   b \ |          f   |
+#      \|              |
+#       +--------------+
+#      c                g
+#       
+#    e3 |
+#       |  e1
+#       +----
+#        \
+#      e2 \
+sub create_cube {
+    my $w = 1.0;
+    my @vertices;
+
+    my $p1 = GLM::Vec3->new(0);
+    my $p2 = GLM::Vec3->new(@_);
+    my $e1 = $p2->normalized;
+    my $e2 = GLM::Vec3->new(0, 0, 1);
+    if ($e1->dot($e2) > 1 - 1e-8) {
+        $e2 = GLM::Vec3->new(-1, 0, 0);
+    }
+    my $e3 = $e2->cross($e1);
+    $e2 = $e1->cross($e3);
+    $e1->normalize;
+    $e2->normalize;
+    $e3->normalize;
+
+    my ($a, $b, $c, $d, $e, $f, $g, $h);
+    my (@a, @b, @c, @d, @e, @f, @g, @h);
+    $a = $p1 - $w * $e2 + $w * $e3;
+    @a = ($a->x, $a->y, $a->z);
+    $b = $p1 - $w * $e2 - $w * $e3;
+    @b = ($b->x, $b->y, $b->z);
+    $c = $p1 + $w * $e2 - $w * $e3;
+    @c = ($c->x, $c->y, $c->z);
+    $d = $p1 + $w * $e2 + $w * $e3;
+    @d = ($d->x, $d->y, $d->z);
+    $e = $p2 - $w * $e2 + $w * $e3;
+    @e = ($e->x, $e->y, $e->z);
+    $f = $p2 - $w * $e2 - $w * $e3;
+    @f = ($f->x, $f->y, $f->z);
+    $g = $p2 + $w * $e2 - $w * $e3;
+    @g = ($g->x, $g->y, $g->z);
+    $h = $p2 + $w * $e2 + $w * $e3;
+    @h = ($h->x, $h->y, $h->z);
+
+    push @vertices, @a, @b, @c;
+    push @vertices, -$e1->x, -$e1->y, -$e1->z;
+    push @vertices, @c, @d, @a;
+    push @vertices, -$e1->x, -$e1->y, -$e1->z;
+
+    push @vertices, @e, @f, @g;
+    push @vertices, $e1->z, $e1->y, $e1->z;
+    push @vertices, @g, @h, @e;
+    push @vertices, $e1->z, $e1->y, $e1->z;
+
+    push @vertices, @d, @c, @g;
+    push @vertices, $e2->z, $e2->y, $e2->z;
+    push @vertices, @g, @h, @d;
+    push @vertices, $e2->z, $e2->y, $e2->z;
+
+    push @vertices, @a, @b, @f;
+    push @vertices, -$e2->z, -$e2->y, -$e2->z;
+    push @vertices, @f, @e, @a;
+    push @vertices, -$e2->z, -$e2->y, -$e2->z;
+
+    push @vertices, @a, @d, @h;
+    push @vertices, $e3->x, $e3->y, $e3->z;
+    push @vertices, @h, @e, @a;
+    push @vertices, $e3->x, $e3->y, $e3->z;
+
+    push @vertices, @b, @c, @g;
+    push @vertices, -$e3->x, -$e3->y, -$e3->z;
+    push @vertices, @g, @f, @b;
+    push @vertices, -$e3->x, -$e3->y, -$e3->z;
+
+    @vertices;
 }
 
 1;

@@ -70,7 +70,7 @@ glutReshapeFunc(sub {
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
-#$shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
+$shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
 #my @vertices = (
 #     0.00,  0.25, 0.00,
 #    -0.25, -0.25, 0.00,
@@ -84,5 +84,6 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 
 $bvh = MotionViewer::BVH->load('sample.bvh');
 $bvh->camera($camera);
+$bvh->shader($shader);
 
 glutMainLoop();
