@@ -9,7 +9,7 @@ use Carp;
 sub load {
     my $class = shift;
     my $this = $class->SUPER::load(@_);
-    $this->time(0);
+    $this->frame(0);
     $this->{shader} = MotionViewer::Shader->load('simple.vs', 'simple.fs');
     
     for my $joint($this->joints) {
@@ -29,10 +29,10 @@ sub load {
     $this;
 }
 
-sub time {
+sub frame{
     my $this = shift;
-    $this->{time} = shift if @_;
-    $this->{time};
+    $this->{frame} = shift if @_;
+    $this->{frame};
 }
 
 sub shader {
@@ -69,7 +69,7 @@ my %axis = (
 sub draw_joint {
     my ($this, $joint, $model_matrix) = @_;
     my @channels = $joint->channels;
-    my @positions = $joint->at_time($this->time);
+    my @positions = $joint->at_frame($this->frame);
     #my @positions = (0) x 6;
     #if ($joint->name eq 'LeftUpArm' || $joint->name eq 'RightUpArm') {
     #    $positions[1] = 45;
