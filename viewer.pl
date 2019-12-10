@@ -28,7 +28,17 @@ sub keyboard {
     my $key = shift;
     if ($key == 27) { # ESC
         glutDestroyWindow($win_id);
-    } 
+    } elsif ($key == ord('F') || $key == ord('f')) {
+        my $frame = $bvh->frame + 1;
+        $frame %= $bvh->frames if $frame >= $bvh->frames;
+        $bvh->frame($frame);
+        glutPostRedisplay;
+    } elsif ($key == ord('B') || $key == ord('b')) {
+        my $frame = $bvh->frame - 1;
+        $frame += $bvh->frames if $frame < 0;
+        $bvh->frame($frame);
+        glutPostRedisplay;
+    }
 }
 
 sub mouse {
