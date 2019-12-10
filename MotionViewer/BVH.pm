@@ -1,6 +1,7 @@
 package MotionViewer::BVH;
 
 use parent 'Mocap::BVH';
+use Math::Trig;
 use OpenGL::Modern qw(:all);
 use GLM;
 use Carp;
@@ -19,7 +20,6 @@ sub load {
         if ($joint->end_site) {
             push @vertices, (0, 0, 0, $joint->end_site);
         }
-        #print $joint->name, " @vertices\n";
         if (@vertices) {
             $this->{buffer}{$joint->name} = MotionViewer::Buffer->new(1, @vertices);
             $this->{count}{$joint->name} = @vertices / 3;
@@ -82,11 +82,10 @@ sub draw_joint {
     if (@channels == 6) {
         if ($channels[0] eq 'Xposition' && $channels[1] eq 'Yposition' && $channels[2] eq 'Zposition') {
             my $v = GLM::Vec3->new(@positions[0..2]);
-            #$model_matrix = GLM::Functions::translate($model_matrix, $v);
+            $model_matrix = GLM::Functions::translate($model_matrix, $v);
             for (my $i = 3; $i < 6; ++$i) {
-            #for (my $i = 5; $i >= 3; --$i) {
                 if ($channels[$i] =~ /([XYZ])rotation/) {
-                    #$model_matrix = GLM::Functions::rotate($model_matrix, $positions[$i], $axis{$1});
+                    $model_matrix = GLM::Functions::rotate($model_matrix, deg2rad($positions[$i]), $axis{$1});
                 } else {
                     die "$channels[$i]: not rotation?";
                 }
@@ -96,9 +95,8 @@ sub draw_joint {
         }
     } else {
         for (my $i = 0; $i < 3; ++$i) {
-        #for (my $i = 2; $i >= 0; --$i) {
             if ($channels[$i] =~ /([XYZ])rotation/) {
-                $model_matrix = GLM::Functions::rotate($model_matrix, $positions[$i], $axis{$1});
+                $model_matrix = GLM::Functions::rotate($model_matrix, deg2rad($positions[$i]), $axis{$1});
             } else {
                 die "$channels[$i]: not rotation?";
             }
