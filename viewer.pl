@@ -13,6 +13,9 @@ my $win_id;
 my ($screen_width, $screen_height) = (800, 600);
 my ($shader, $buffer, $camera);
 my $bvh;
+my ($round, $trial) = (1, 1);
+my $itr = 0;
+my @samples;
 
 sub render {
     #glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -24,7 +27,10 @@ sub render {
     $bvh->shader->use;
     $bvh->shader->set_mat4('view', $camera->view_matrix);
     $bvh->shader->set_mat4('proj', $camera->proj_matrix);
-    $bvh->draw;
+    for (values %{$samples[$itr]}) {
+        $bvh->at_frame($bvh->frame, @{$_->{pos}});
+        $bvh->draw;
+    }
     glutSwapBuffers();
 }
 
@@ -33,14 +39,18 @@ sub keyboard {
     if ($key == 27) { # ESC
         glutDestroyWindow($win_id);
     } elsif ($key == ord('F') || $key == ord('f')) {
-        my $frame = $bvh->frame + 1;
-        $frame %= $bvh->frames if $frame >= $bvh->frames;
-        $bvh->frame($frame);
+        #my $frame = $bvh->frame + 1;
+        #$frame %= $bvh->frames if $frame >= $bvh->frames;
+        #$bvh->frame($frame);
+        ++$itr;
+        $itr %= @samples if $itr >= @samples;
         glutPostRedisplay;
     } elsif ($key == ord('B') || $key == ord('b')) {
-        my $frame = $bvh->frame - 1;
-        $frame += $bvh->frames if $frame < 0;
-        $bvh->frame($frame);
+        #my $frame = $bvh->frame - 1;
+        #$frame += $bvh->frames if $frame < 0;
+        #$bvh->frame($frame);
+        --$itr;
+        $itr += @samples if $itr < 0;
         glutPostRedisplay;
     }
 }
@@ -87,10 +97,20 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 #$shader->set_mat4('view', $camera->view_matrix);
 #$shader->set_mat4('proj', $camera->proj_matrix);
 
-$bvh = MotionViewer::BVH->load('sample.bvh');
+$bvh = MotionViewer::BVH->load('walk.bvh');
 $bvh->shader($shader);
 $bvh->shader->use;
 $bvh->shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $bvh->shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
+
+for my $dir(glob "samples/$round/$trial/*") {
+    die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
+    my $i = $1;
+    for my $name(glob "$dir/*.txt") {
+        open my $fh, '<', $name;
+        $_ = <$fh>;
+        $samples[$i]{$name}{pos} = [split];
+    }
+}
 
 glutMainLoop();
