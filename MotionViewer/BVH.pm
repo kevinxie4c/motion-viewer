@@ -185,25 +185,25 @@ sub create_cube {
     push @vertices, @a, @n1, @b, @n1, @c, @n1;
     push @vertices, @c, @n1, @d, @n1, @a, @n1;
 
-    my @n2 = ($e1->z, $e1->y, $e1->z);
-    push @vertices, @e, @n2, @f, @n2, @g, @n2;
-    push @vertices, @g, @n2, @h, @n2, @e, @n2;
+    my @n2 = ($e1->x, $e1->y, $e1->z);
+    push @vertices, @g, @n2, @f, @n2, @e, @n2;
+    push @vertices, @e, @n2, @h, @n2, @g, @n2;
 
-    my @n3 = ($e2->z, $e2->y, $e2->z);
+    my @n3 = ($e2->x, $e2->y, $e2->z);
     push @vertices, @d, @n3, @c, @n3, @g, @n3;
     push @vertices, @g, @n3, @h, @n3, @d, @n3;
 
-    my @n4 = (-$e2->z, -$e2->y, -$e2->z);
-    push @vertices, @a, @n4, @b, @n4, @f, @n4;
-    push @vertices, @f, @n4, @e, @n4, @a, @n4;
+    my @n4 = (-$e2->x, -$e2->y, -$e2->z);
+    push @vertices, @f, @n4, @b, @n4, @a, @n4;
+    push @vertices, @a, @n4, @e, @n4, @f, @n4;
 
     my @n5 = ($e3->x, $e3->y, $e3->z);
     push @vertices, @a, @n5, @d, @n5, @h, @n5;
     push @vertices, @h, @n5, @e, @n5, @a, @n5;
 
     my @n6 = (-$e3->x, -$e3->y, -$e3->z);
-    push @vertices, @b, @n6, @c, @n6, @g, @n6;
-    push @vertices, @g, @n6, @f, @n6, @b, @n6;
+    push @vertices, @g, @n6, @c, @n6, @b, @n6;
+    push @vertices, @b, @n6, @f, @n6, @g, @n6;
 
     @vertices;
 }

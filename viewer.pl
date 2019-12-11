@@ -15,8 +15,9 @@ my ($shader, $buffer, $camera);
 my $bvh;
 
 sub render {
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    #glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(0.529, 0.808, 0.922, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     #$shader->use;
     #$buffer->bind;
     #glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -73,6 +74,7 @@ glutReshapeFunc(sub {
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
+glEnable(GL_DEPTH_TEST);
 $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
 #my @vertices = (
 #     0.00,  0.25, 0.00,
@@ -87,5 +89,8 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 
 $bvh = MotionViewer::BVH->load('sample.bvh');
 $bvh->shader($shader);
+$bvh->shader->use;
+$bvh->shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
+$bvh->shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
 
 glutMainLoop();

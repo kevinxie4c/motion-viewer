@@ -62,10 +62,19 @@ sub set_float {
     glUniform1f(glGetUniformLocation_c($this->{shader}, $name), $value);
 }
 
+sub set_vec3 {
+    my ($this, $name, $value) = @_;
+    glUniform3fv_c(glGetUniformLocation_c($this->{shader}, $name), 1, $value->pointer);
+}
+
+sub set_vec4 {
+    my ($this, $name, $value) = @_;
+    glUniform4fv_c(glGetUniformLocation_c($this->{shader}, $name), 1, $value->pointer);
+}
+
 sub set_mat4 {
     my ($this, $name, $value) = @_;
-    my $loc;
-    glUniformMatrix4fv_c($loc = glGetUniformLocation_c($this->{shader}, $name), 1, 0, $value->pointer);
+    glUniformMatrix4fv_c(glGetUniformLocation_c($this->{shader}, $name), 1, 0, $value->pointer);
 }
 
 1;
