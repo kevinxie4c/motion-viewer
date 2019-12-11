@@ -58,18 +58,9 @@ sub shader {
     $this->{shader} = shift if @_;
     $this->{shader};
 }
-
-sub camera {
-    my $this = shift;
-    $this->{camera} = shift if @_;
-    $this->{camera};
-}
     
 sub draw {
     my $this = shift;
-    $this->shader->use;
-    $this->shader->set_mat4('view', $this->camera->view_matrix);
-    $this->shader->set_mat4('proj', $this->camera->proj_matrix);
     my $model_matrix = GLM::Mat4->new(
         1, 0, 0, 0, 
         0, 1, 0, 0,
@@ -190,35 +181,29 @@ sub create_cube {
     $h = $p2 + $w * $e2 + $w * $e3;
     @h = ($h->x, $h->y, $h->z);
 
-    push @vertices, @a, @b, @c;
-    push @vertices, -$e1->x, -$e1->y, -$e1->z;
-    push @vertices, @c, @d, @a;
-    push @vertices, -$e1->x, -$e1->y, -$e1->z;
+    my @n1 = (-$e1->x, -$e1->y, -$e1->z);
+    push @vertices, @a, @n1, @b, @n1, @c, @n1;
+    push @vertices, @c, @n1, @d, @n1, @a, @n1;
 
-    push @vertices, @e, @f, @g;
-    push @vertices, $e1->z, $e1->y, $e1->z;
-    push @vertices, @g, @h, @e;
-    push @vertices, $e1->z, $e1->y, $e1->z;
+    my @n2 = ($e1->z, $e1->y, $e1->z);
+    push @vertices, @e, @n2, @f, @n2, @g, @n2;
+    push @vertices, @g, @n2, @h, @n2, @e, @n2;
 
-    push @vertices, @d, @c, @g;
-    push @vertices, $e2->z, $e2->y, $e2->z;
-    push @vertices, @g, @h, @d;
-    push @vertices, $e2->z, $e2->y, $e2->z;
+    my @n3 = ($e2->z, $e2->y, $e2->z);
+    push @vertices, @d, @n3, @c, @n3, @g, @n3;
+    push @vertices, @g, @n3, @h, @n3, @d, @n3;
 
-    push @vertices, @a, @b, @f;
-    push @vertices, -$e2->z, -$e2->y, -$e2->z;
-    push @vertices, @f, @e, @a;
-    push @vertices, -$e2->z, -$e2->y, -$e2->z;
+    my @n4 = (-$e2->z, -$e2->y, -$e2->z);
+    push @vertices, @a, @n4, @b, @n4, @f, @n4;
+    push @vertices, @f, @n4, @e, @n4, @a, @n4;
 
-    push @vertices, @a, @d, @h;
-    push @vertices, $e3->x, $e3->y, $e3->z;
-    push @vertices, @h, @e, @a;
-    push @vertices, $e3->x, $e3->y, $e3->z;
+    my @n5 = ($e3->x, $e3->y, $e3->z);
+    push @vertices, @a, @n5, @d, @n5, @h, @n5;
+    push @vertices, @h, @n5, @e, @n5, @a, @n5;
 
-    push @vertices, @b, @c, @g;
-    push @vertices, -$e3->x, -$e3->y, -$e3->z;
-    push @vertices, @g, @f, @b;
-    push @vertices, -$e3->x, -$e3->y, -$e3->z;
+    my @n6 = (-$e3->x, -$e3->y, -$e3->z);
+    push @vertices, @b, @n6, @c, @n6, @g, @n6;
+    push @vertices, @g, @n6, @f, @n6, @b, @n6;
 
     @vertices;
 }

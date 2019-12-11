@@ -20,6 +20,9 @@ sub render {
     #$shader->use;
     #$buffer->bind;
     #glDrawArrays(GL_TRIANGLES, 0, 3);
+    $bvh->shader->use;
+    $bvh->shader->set_mat4('view', $camera->view_matrix);
+    $bvh->shader->set_mat4('proj', $camera->proj_matrix);
     $bvh->draw;
     glutSwapBuffers();
 }
@@ -83,7 +86,6 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 #$shader->set_mat4('proj', $camera->proj_matrix);
 
 $bvh = MotionViewer::BVH->load('sample.bvh');
-$bvh->camera($camera);
 $bvh->shader($shader);
 
 glutMainLoop();
