@@ -107,6 +107,10 @@ sub proj_matrix {
     GLM::Functions::perspective($this->fovy, $this->aspect, $this->near, $this->far);
 }
 
+sub keyboard_handler {
+    my ($this, $key) = @_;
+}
+
 sub mouse_handler {
     my ($this, $button, $state, $x, $y) = @_;
     if ($state == GLUT_DOWN) {

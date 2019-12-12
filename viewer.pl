@@ -17,6 +17,27 @@ my ($round, $trial) = (1, 1);
 my $itr = 0;
 my $frame = 43;
 my @samples;
+my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
+
+
+sub load_sample {
+    my $trial_dir = "samples/$round/$trial";
+    if (-d $trial_dir) {
+        @samples = ();
+        for my $dir(glob "$trial_dir/*") {
+            die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
+            my $i = $1;
+            for my $name(glob "$dir/*.txt") {
+                open my $fh, '<', $name;
+                $_ = <$fh>;
+                $samples[$i]{$name}{pos} = [split];
+            }
+        }
+        print "$trial_dir loaded\n";
+    } else {
+        print "cannot find $trial_dir\n";
+    }
+}
 
 sub render {
     #glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -28,6 +49,7 @@ sub render {
     $bvh->shader->use;
     $bvh->shader->set_mat4('view', $camera->view_matrix);
     $bvh->shader->set_mat4('proj', $camera->proj_matrix);
+    $bvh->shader->set_vec3('color', $orange);
     $bvh->shader->set_float('alpha', 1.0);
     $bvh->set_position($bvh->at_frame($frame));
     $bvh->draw;
@@ -55,7 +77,43 @@ sub keyboard {
         --$itr;
         $itr += @samples if $itr < 0;
         glutPostRedisplay;
+    } elsif ($key == ord('[')) {
+        if ($trial > 0) {
+            --$trial;
+            load_sample;
+            glutPostRedisplay;
+        }
+    } elsif ($key == ord(']')) {
+        ++$trial;
+        load_sample;
+        glutPostRedisplay;
+    } elsif ($key == ord(',')) {
+        if ($round > 0) {
+            --$round;
+            load_sample;
+            glutPostRedisplay;
+        }
+    } elsif ($key == ord('.')) {
+        ++$round;
+        load_sample;
+        glutPostRedisplay;
+    } elsif ($key == ord('H') || $key == ord('h')) {
+        print <<'HELP';
+ESC: exit.
+Keyboard
+    B: previous iteration (frame - 10).
+    F: next iteration (frame + 10).
+    [: previous trial.
+    ]: next trial.
+    ,: previous round.
+    .: next round.
+
+Mouse
+    Left button: rotate. Translate with X, Y or Z pressed.
+    Right button: zoom.
+HELP
     }
+    $camera->keyboard_handler(@_);
 }
 
 sub mouse {
@@ -108,14 +166,6 @@ $bvh->shader->use;
 $bvh->shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $bvh->shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
 
-for my $dir(glob "samples/$round/$trial/*") {
-    die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
-    my $i = $1;
-    for my $name(glob "$dir/*.txt") {
-        open my $fh, '<', $name;
-        $_ = <$fh>;
-        $samples[$i]{$name}{pos} = [split];
-    }
-}
+load_sample;
 
 glutMainLoop();

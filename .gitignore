@@ -36,4 +36,6 @@ inc/
 *~
 *.un~
 *.swp
-samples
+samples/
+samples_m/
+samples_o/
