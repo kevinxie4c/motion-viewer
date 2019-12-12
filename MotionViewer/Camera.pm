@@ -109,6 +109,25 @@ sub proj_matrix {
 
 sub keyboard_handler {
     my ($this, $key) = @_;
+    if ($key == ord('X') || $key == ord('x')) {
+        $this->{x_down} = 1;
+    } elsif ($key == ord('Y') || $key == ord('y')) {
+        $this->{y_down} = 1;
+    } elsif ($key == ord('Z') || $key == ord('z')) {
+        $this->{z_down} = 1;
+    }
+}
+
+sub keyboard_up_handler {
+    my ($this, $key) = @_;
+    my ($this, $key) = @_;
+    if ($key == ord('X') || $key == ord('x')) {
+        $this->{x_down} = 0;
+    } elsif ($key == ord('Y') || $key == ord('y')) {
+        $this->{y_down} = 0;
+    } elsif ($key == ord('Z') || $key == ord('z')) {
+        $this->{z_down} = 0;
+    }
 }
 
 sub mouse_handler {
@@ -130,6 +149,10 @@ sub mouse_handler {
     $this->{last_y} = $y;
 }
 
+my $rot_speed = 0.1;
+my $zoom_speed = 0.1;
+my $pan_speed = 0.5;
+
 sub motion_handler {
     my ($this, $x, $y) = @_;
     my $x_offset = $x - $this->{last_x};
@@ -137,11 +160,18 @@ sub motion_handler {
     #print 'yaw: ' . $this->yaw . "\n";
     #print 'pitch: ' . $this->pitch . "\n";
     if ($this->{left_button}) {
-        my $rot_speed = 0.1;
-        $this->yaw($this->yaw - $x_offset * $rot_speed);
-        $this->pitch($this->pitch + $y_offset * $rot_speed);
+        if ($this->{x_down}) {
+            my $p = $this->center;
+            $this->center($this->center + GLM::Vec3->new($y_offset * $pan_speed, 0, 0));
+        } elsif ($this->{y_down}) {
+            $this->center($this->center + GLM::Vec3->new(0, $y_offset * $pan_speed, 0));
+        } elsif ($this->{z_down}) {
+            $this->center($this->center + GLM::Vec3->new(0, 0, $y_offset * $pan_speed));
+        } else {
+            $this->yaw($this->yaw - $x_offset * $rot_speed);
+            $this->pitch($this->pitch + $y_offset * $rot_speed);
+        }
     } elsif ($this->{right_button}) {
-        $zoom_speed = 0.1;
         $this->distance($this->distance + $y_offset * $zoom_speed);
     }
     $this->update_view_matrix;

@@ -10,7 +10,6 @@ uniform float alpha;
 
 void main(void)
 {
-    vec4 color = vec4(1.0, 0.5, 0.2, 1.0);
 	vec3 ambience = vec3(0.1);
-	FragColor = vec4((ambience + lightIntensity * max(0, dot(-lightDir, normal))), alpha) * color;
+	FragColor = vec4((ambience + lightIntensity * max(0, dot(-lightDir, normal))), alpha) * vec4(color, 1.0);
 }
