@@ -8,11 +8,66 @@ use MotionViewer::Shader;
 use MotionViewer::Buffer;
 use MotionViewer::Camera;
 use MotionViewer::BVH;
+use strict;
+use warnings;
 
 my $win_id;
 my ($screen_width, $screen_height) = (800, 600);
 my ($shader, $buffer, $camera);
 my $bvh;
+my ($round, $trial) = (1, 1);
+my ($show_pose, $show_ref) = (1, 0);
+my ($show_m, $show_o) = (1, 1);
+my $itr = 0;
+my $frame = 43;
+my (@samples_m, @samples_o);
+my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
+my $red = GLM::Vec3->new(1.0, 0.0, 0.0);
+my $blue = GLM::Vec3->new(0.0, 0.0, 1.0);
+
+sub load_sample {
+    my $trial_dir_m = "samples_m/$round/$trial";
+    if (-d $trial_dir_m) {
+        @samples_m = ();
+        for my $dir(glob "$trial_dir_m/*") {
+            die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
+            my $i = $1;
+            for my $name(glob "$dir/*.txt") {
+                open my $fh, '<', $name;
+                my $it = {};
+                $_ = <$fh>;
+                $it->{pos} = [split];
+                $_ = <$fh>;
+                $it->{ref} = [split];
+                $samples_m[$i]{$name} = $it;
+            }
+        }
+        print "$trial_dir_m loaded\n";
+    } else {
+        print "cannot find $trial_dir_m\n";
+    }
+
+    my $trial_dir_o = "samples_o/$round/$trial";
+    if (-d $trial_dir_o) {
+        @samples_o = ();
+        for my $dir(glob "$trial_dir_o/*") {
+            die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
+            my $i = $1;
+            for my $name(glob "$dir/*.txt") {
+                open my $fh, '<', $name;
+                my $it = {};
+                $_ = <$fh>;
+                $it->{pos} = [split];
+                $_ = <$fh>;
+                $it->{ref} = [split];
+                $samples_o[$i]{$name} = $it;
+            }
+        }
+        print "$trial_dir_o loaded\n";
+    } else {
+        print "cannot find $trial_dir_o\n";
+    }
+}
 
 sub render {
     #glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -24,25 +79,115 @@ sub render {
     $bvh->shader->use;
     $bvh->shader->set_mat4('view', $camera->view_matrix);
     $bvh->shader->set_mat4('proj', $camera->proj_matrix);
+    $bvh->shader->set_vec3('color', $orange);
+    $bvh->shader->set_float('alpha', 1.0);
+    $bvh->set_position($bvh->at_frame($frame));
     $bvh->draw;
+    $bvh->shader->set_float('alpha', 0.2);
+    if ($show_m) {
+        for (values %{$samples_m[$itr]}) {
+            if ($show_pose) {
+                $bvh->shader->set_vec3('color', $blue);
+                $bvh->set_position(@{$_->{pos}});
+                $bvh->draw;
+            }
+            if ($show_ref) {
+                $bvh->shader->set_vec3('color', 0.7 * $blue);
+                $bvh->set_position(@{$_->{ref}});
+                $bvh->draw;
+            }
+        }
+    }
+    if ($show_o) {
+        for (values %{$samples_o[$itr]}) {
+            if ($show_pose) {
+                $bvh->shader->set_vec3('color', $red);
+                $bvh->set_position(@{$_->{pos}});
+                $bvh->draw;
+            }
+            if ($show_ref) {
+                $bvh->shader->set_vec3('color', 0.7 * $red);
+                $bvh->set_position(@{$_->{ref}});
+                $bvh->draw;
+            }
+        }
+    }
     glutSwapBuffers();
 }
 
 sub keyboard {
-    my $key = shift;
+    my ($key) = @_;
     if ($key == 27) { # ESC
         glutDestroyWindow($win_id);
     } elsif ($key == ord('F') || $key == ord('f')) {
-        my $frame = $bvh->frame + 1;
-        $frame %= $bvh->frames if $frame >= $bvh->frames;
-        $bvh->frame($frame);
-        glutPostRedisplay;
+        if ($frame + 10 < $bvh->frames && $itr + 1 < @samples_m && $itr + 1 < @samples_o) {
+            $frame += 10;
+            ++$itr;
+            glutPostRedisplay;
+        }
     } elsif ($key == ord('B') || $key == ord('b')) {
-        my $frame = $bvh->frame - 1;
-        $frame += $bvh->frames if $frame < 0;
-        $bvh->frame($frame);
+        if ($frame - 10 >= 0 && $itr - 1 >= 0) {
+            $frame -= 10;
+            --$itr;
+            glutPostRedisplay;
+        }
+    } elsif ($key == ord('[')) {
+        if ($trial > 0) {
+            --$trial;
+            load_sample;
+            glutPostRedisplay;
+        }
+    } elsif ($key == ord(']')) {
+        ++$trial;
+        load_sample;
         glutPostRedisplay;
+    } elsif ($key == ord(',')) {
+        if ($round > 0) {
+            --$round;
+            load_sample;
+            glutPostRedisplay;
+        }
+    } elsif ($key == ord('.')) {
+        ++$round;
+        load_sample;
+        glutPostRedisplay;
+    } elsif ($key == ord('P') || $key == ord('p')) {
+        $show_pose = !$show_pose;
+        glutPostRedisplay;
+    } elsif ($key == ord('R') || $key == ord('r')) {
+        $show_ref = !$show_ref;
+        glutPostRedisplay;
+    } elsif ($key == ord('M') || $key == ord('m')) {
+        $show_m = !$show_m;
+        glutPostRedisplay;
+    } elsif ($key == ord('O') || $key == ord('o')) {
+        $show_o = !$show_o;
+        glutPostRedisplay;
+    } elsif ($key == ord('H') || $key == ord('h')) {
+        print <<'HELP';
+ESC: exit.
+Keyboard
+    B: previous iteration (frame - 10).
+    F: next iteration (frame + 10).
+    [: previous trial.
+    ]: next trial.
+    ,: previous round.
+    .: next round.
+    P: toggle showing pose.
+    R: toggle showing reference.
+    M: toggle showing mass-SAMCON.
+    O: toggle showing original SAMCON.
+
+Mouse
+    Left button: rotate. Translate with X, Y or Z pressed.
+    Right button: zoom.
+HELP
     }
+    $camera->keyboard_handler(@_);
+}
+
+sub keyboard_up {
+    $camera->keyboard_up_handler(@_);
 }
 
 sub mouse {
@@ -62,6 +207,7 @@ glutInitWindowSize($screen_width, $screen_height);
 $win_id = glutCreateWindow("Viewer");
 glutDisplayFunc(\&render);
 glutKeyboardFunc(\&keyboard);
+glutKeyboardUpFunc(\&keyboard_up);
 glutMouseFunc(\&mouse);
 glutMotionFunc(\&motion);
 glutReshapeFunc(sub {
@@ -75,6 +221,8 @@ glutReshapeFunc(sub {
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
 glEnable(GL_DEPTH_TEST);
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
 #my @vertices = (
 #     0.00,  0.25, 0.00,
@@ -87,10 +235,12 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 #$shader->set_mat4('view', $camera->view_matrix);
 #$shader->set_mat4('proj', $camera->proj_matrix);
 
-$bvh = MotionViewer::BVH->load('sample.bvh');
+$bvh = MotionViewer::BVH->load('walk.bvh');
 $bvh->shader($shader);
 $bvh->shader->use;
 $bvh->shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $bvh->shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
+
+load_sample;
 
 glutMainLoop();

@@ -11,7 +11,6 @@ use warnings;
 sub load {
     my $class = shift;
     my $this = $class->SUPER::load(@_);
-    $this->frame(0);
     
     for my $joint($this->joints) {
         my @vertices;
@@ -47,16 +46,17 @@ sub load {
     $this;
 }
 
-sub frame{
-    my $this = shift;
-    $this->{frame} = shift if @_;
-    $this->{frame};
-}
-
 sub shader {
     my $this = shift;
     $this->{shader} = shift if @_;
     $this->{shader};
+}
+
+sub set_position {
+    my $this = shift;
+    for ($this->joints) {
+        $_->{position} = [splice(@_, 0, scalar($_->channels))];
+    }
 }
     
 sub draw {
@@ -79,14 +79,7 @@ my %axis = (
 sub draw_joint {
     my ($this, $joint, $model_matrix) = @_;
     my @channels = $joint->channels;
-    my @positions = $joint->at_frame($this->frame);
-    #my @positions = (0) x 6;
-    #if ($joint->name eq 'LeftUpArm' || $joint->name eq 'RightUpArm') {
-    #    $positions[1] = 45;
-    #}
-    #if ($joint->name eq 'LeftLowArm') {
-    #    $positions[0] = 45;
-    #}
+    my @positions = @{$joint->{position}};
     my $offset = GLM::Vec3->new($joint->offset);
     $model_matrix = GLM::Functions::translate($model_matrix, $offset);
     if (@channels == 6) {
