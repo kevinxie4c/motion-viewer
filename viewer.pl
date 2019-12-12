@@ -15,6 +15,7 @@ my ($shader, $buffer, $camera);
 my $bvh;
 my ($round, $trial) = (1, 1);
 my $itr = 0;
+my $frame = 43;
 my @samples;
 
 sub render {
@@ -27,8 +28,12 @@ sub render {
     $bvh->shader->use;
     $bvh->shader->set_mat4('view', $camera->view_matrix);
     $bvh->shader->set_mat4('proj', $camera->proj_matrix);
+    $bvh->shader->set_float('alpha', 1.0);
+    $bvh->set_position($bvh->at_frame($frame));
+    $bvh->draw;
+    $bvh->shader->set_float('alpha', 0.2);
     for (values %{$samples[$itr]}) {
-        $bvh->at_frame($bvh->frame, @{$_->{pos}});
+        $bvh->set_position(@{$_->{pos}});
         $bvh->draw;
     }
     glutSwapBuffers();
@@ -39,16 +44,14 @@ sub keyboard {
     if ($key == 27) { # ESC
         glutDestroyWindow($win_id);
     } elsif ($key == ord('F') || $key == ord('f')) {
-        #my $frame = $bvh->frame + 1;
-        #$frame %= $bvh->frames if $frame >= $bvh->frames;
-        #$bvh->frame($frame);
+        $frame += 10;
+        $frame %= $bvh->frames if $frame >= $bvh->frames;
         ++$itr;
         $itr %= @samples if $itr >= @samples;
         glutPostRedisplay;
     } elsif ($key == ord('B') || $key == ord('b')) {
-        #my $frame = $bvh->frame - 1;
-        #$frame += $bvh->frames if $frame < 0;
-        #$bvh->frame($frame);
+        $frame -= 10;
+        $frame += $bvh->frames if $frame < 0;
         --$itr;
         $itr += @samples if $itr < 0;
         glutPostRedisplay;
@@ -85,6 +88,8 @@ glutReshapeFunc(sub {
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
 glEnable(GL_DEPTH_TEST);
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
 #my @vertices = (
 #     0.00,  0.25, 0.00,
