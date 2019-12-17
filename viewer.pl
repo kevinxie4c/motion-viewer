@@ -25,7 +25,8 @@ my ($samples_m, $samples_o);
 my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
 my $red = GLM::Vec3->new(1.0, 0.0, 0.0);
 my $blue = GLM::Vec3->new(0.0, 0.0, 1.0);
-my $alpha = 0.02;
+my $alpha = 0.1;
+my $num_of_samples = 20;
 
 sub load_sample {
     my $trial_dir_m = File::Spec->catdir('samples_m', $round, $trial);
@@ -55,7 +56,9 @@ sub render {
     $bvh->draw;
     $bvh->shader->set_float('alpha', $alpha);
     if ($show_m) {
+        my $count = $num_of_samples;
         for (@{$samples_m->[$itr]}) {
+            last if $count-- <= 0;
             if ($show_pose) {
                 $bvh->shader->set_vec3('color', $blue);
                 $bvh->set_position(@{$_->{pos}});
@@ -69,7 +72,9 @@ sub render {
         }
     }
     if ($show_o) {
+        my $count = $num_of_samples;
         for (@{$samples_o->[$itr]}) {
+            last if $count-- <= 0;
             if ($show_pose) {
                 $bvh->shader->set_vec3('color', $red);
                 $bvh->set_position(@{$_->{pos}});
@@ -139,6 +144,14 @@ sub keyboard {
     } elsif ($key == ord('0')) {
         $alpha /= 0.9;
         glutPostRedisplay;
+    } elsif ($key == ord('-')) {
+        if ($num_of_samples - 10 > 0) {
+            $num_of_samples -= 10;
+            glutPostRedisplay;
+        }
+    } elsif ($key == ord('=')) {
+        $num_of_samples += 10;
+        glutPostRedisplay;
     } elsif ($key == ord('C') || $key == ord('c')) {
         my ($x, $y, $z) = $bvh->at_frame($frame); # Assume that the first 3 dofs are translation
         $camera->center(GLM::Vec3->new($x, $y, $z));
@@ -159,8 +172,11 @@ Keyboard
     R: toggle showing reference.
     M: toggle showing mass-SAMCON.
     O: toggle showing original SAMCON.
+    C: center the character
     9: decrease alpha
     0: increase alpha
+    -: decrease number of samples shown
+    +: increase number of samples shown
 
 Mouse
     Left button: rotate. Translate with X, Y or Z pressed.
