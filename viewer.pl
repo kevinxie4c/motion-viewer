@@ -8,6 +8,7 @@ use MotionViewer::Shader;
 use MotionViewer::Buffer;
 use MotionViewer::Camera;
 use MotionViewer::BVH;
+use MotionViewer::Compress qw(:all);
 use strict;
 use warnings;
 
@@ -20,52 +21,21 @@ my ($show_pose, $show_ref) = (1, 0);
 my ($show_m, $show_o) = (1, 1);
 my $itr = 0;
 my $frame = 43;
-my (@samples_m, @samples_o);
+my ($samples_m, $samples_o);
 my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
 my $red = GLM::Vec3->new(1.0, 0.0, 0.0);
 my $blue = GLM::Vec3->new(0.0, 0.0, 1.0);
+my $alpha = 0.02;
 
 sub load_sample {
-    my $trial_dir_m = "samples_m/$round/$trial";
-    if (-d $trial_dir_m) {
-        @samples_m = ();
-        for my $dir(glob "$trial_dir_m/*") {
-            die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
-            my $i = $1;
-            for my $name(glob "$dir/*.txt") {
-                open my $fh, '<', $name;
-                my $it = {};
-                $_ = <$fh>;
-                $it->{pos} = [split];
-                $_ = <$fh>;
-                $it->{ref} = [split];
-                $samples_m[$i]{$name} = $it;
-            }
-        }
-        print "$trial_dir_m loaded\n";
+    my $trial_dir_m = File::Spec->catdir('samples_m', $round, $trial);
+    my $trial_dir_o = File::Spec->catdir('samples_o', $round, $trial);
+    if (-d $trial_dir_m && -d $trial_dir_o) {
+        print "round=$round, trial = $trial\n";
+        $samples_m = decompress $trial_dir_m;
+        $samples_o = decompress $trial_dir_o;
     } else {
-        print "cannot find $trial_dir_m\n";
-    }
-
-    my $trial_dir_o = "samples_o/$round/$trial";
-    if (-d $trial_dir_o) {
-        @samples_o = ();
-        for my $dir(glob "$trial_dir_o/*") {
-            die "$dir does not look like a number" unless $dir =~ /(\d+)$/;
-            my $i = $1;
-            for my $name(glob "$dir/*.txt") {
-                open my $fh, '<', $name;
-                my $it = {};
-                $_ = <$fh>;
-                $it->{pos} = [split];
-                $_ = <$fh>;
-                $it->{ref} = [split];
-                $samples_o[$i]{$name} = $it;
-            }
-        }
-        print "$trial_dir_o loaded\n";
-    } else {
-        print "cannot find $trial_dir_o\n";
+        warn "cannot open $trial_dir_m or $trial_dir_o\n";
     }
 }
 
@@ -83,9 +53,9 @@ sub render {
     $bvh->shader->set_float('alpha', 1.0);
     $bvh->set_position($bvh->at_frame($frame));
     $bvh->draw;
-    $bvh->shader->set_float('alpha', 0.2);
+    $bvh->shader->set_float('alpha', $alpha);
     if ($show_m) {
-        for (values %{$samples_m[$itr]}) {
+        for (@{$samples_m->[$itr]}) {
             if ($show_pose) {
                 $bvh->shader->set_vec3('color', $blue);
                 $bvh->set_position(@{$_->{pos}});
@@ -99,7 +69,7 @@ sub render {
         }
     }
     if ($show_o) {
-        for (values %{$samples_o[$itr]}) {
+        for (@{$samples_o->[$itr]}) {
             if ($show_pose) {
                 $bvh->shader->set_vec3('color', $red);
                 $bvh->set_position(@{$_->{pos}});
@@ -120,7 +90,7 @@ sub keyboard {
     if ($key == 27) { # ESC
         glutDestroyWindow($win_id);
     } elsif ($key == ord('F') || $key == ord('f')) {
-        if ($frame + 10 < $bvh->frames && $itr + 1 < @samples_m && $itr + 1 < @samples_o) {
+        if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples_m && $itr + 1 < @$samples_o) {
             $frame += 10;
             ++$itr;
             glutPostRedisplay;
@@ -163,10 +133,17 @@ sub keyboard {
     } elsif ($key == ord('O') || $key == ord('o')) {
         $show_o = !$show_o;
         glutPostRedisplay;
+    } elsif ($key == ord('9')) {
+        $alpha *= 0.9;
+        glutPostRedisplay;
+    } elsif ($key == ord('0')) {
+        $alpha /= 0.9;
+        glutPostRedisplay;
     } elsif ($key == ord('H') || $key == ord('h')) {
         print <<'HELP';
-ESC: exit.
+
 Keyboard
+    ESC: exit.
     B: previous iteration (frame - 10).
     F: next iteration (frame + 10).
     [: previous trial.
@@ -177,10 +154,13 @@ Keyboard
     R: toggle showing reference.
     M: toggle showing mass-SAMCON.
     O: toggle showing original SAMCON.
+    9: decrease alpha
+    0: increase alpha
 
 Mouse
     Left button: rotate. Translate with X, Y or Z pressed.
     Right button: zoom.
+
 HELP
     }
     $camera->keyboard_handler(@_);
@@ -220,7 +200,8 @@ glutReshapeFunc(sub {
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
-glEnable(GL_DEPTH_TEST);
+glDisable(GL_DEPTH_TEST);
+#glEnable(GL_DEPTH_TEST);
 glEnable(GL_BLEND);
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
