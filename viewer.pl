@@ -139,6 +139,11 @@ sub keyboard {
     } elsif ($key == ord('0')) {
         $alpha /= 0.9;
         glutPostRedisplay;
+    } elsif ($key == ord('C') || $key == ord('c')) {
+        my ($x, $y, $z) = $bvh->at_frame($frame); # Assume that the first 3 dofs are translation
+        $camera->center(GLM::Vec3->new($x, $y, $z));
+        $camera->update_view_matrix;
+        glutPostRedisplay;
     } elsif ($key == ord('H') || $key == ord('h')) {
         print <<'HELP';
 
