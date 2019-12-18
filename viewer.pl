@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use OpenGL::Modern qw(:all);
 use OpenGL::GLUT qw(:all);
+use OpenGL::Array;
 
 use FindBin qw($Bin);
 use lib $Bin;
@@ -13,20 +14,26 @@ use strict;
 use warnings;
 
 my $win_id;
-my ($screen_width, $screen_height) = (800, 600);
+my ($screen_width, $screen_height) = (1280, 720);
 my ($shader, $buffer, $camera);
 my $bvh;
 my ($round, $trial) = (1, 1);
 my ($show_pose, $show_ref) = (1, 0);
 my ($show_m, $show_o) = (1, 1);
 my $itr = 0;
-my $frame = 43;
+my $start_frame = 43;
+my $frame = $start_frame;
 my ($samples_m, $samples_o);
 my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
 my $red = GLM::Vec3->new(1.0, 0.0, 0.0);
 my $blue = GLM::Vec3->new(0.0, 0.0, 1.0);
 my $alpha = 0.1;
 my $num_of_samples = 20;
+my $animate = 0;
+my $fps = 10; # 0.1 second per iteration. 10 Hz.
+my $ffmpeg = $^O eq 'MSWin32' ? 'ffmpeg.exe': 'ffmpeg';
+my $fh_ffmpeg;
+my $recording = 0;
 
 sub load_sample {
     my $trial_dir_m = File::Spec->catdir('samples_m', $round, $trial);
@@ -88,6 +95,25 @@ sub render {
         }
     }
     glutSwapBuffers();
+    if ($recording) {
+        my $buffer = OpenGL::Array->new($screen_width * $screen_height * 4, GL_BYTE);
+        glReadPixels_c(0, 0, $screen_width, $screen_height, GL_RGBA, GL_BYTE, $buffer->ptr);
+        print $fh_ffmpeg $buffer->retrieve_data(0, $screen_width * $screen_height * 4);
+    }
+}
+
+sub timer {
+    if ($animate) {
+        if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples_m && $itr + 1 < @$samples_o) {
+            $frame += 10;
+            ++$itr;
+        } else {
+            $frame = $start_frame;
+            $itr = 0;
+        }
+        glutTimerFunc(1.0 / $fps * 1000, \&timer);
+        glutPostRedisplay;
+    }
 }
 
 sub keyboard {
@@ -157,6 +183,19 @@ sub keyboard {
         $camera->center(GLM::Vec3->new($x, $y, $z));
         $camera->update_view_matrix;
         glutPostRedisplay;
+    } elsif ($key == ord(' ')) {
+        $animate = !$animate;
+        if ($animate) {
+            glutTimerFunc(1.0 / $fps * 1000, \&timer);
+        }
+    } elsif ($key == ord('V') || $key == ord('v')) {
+        $recording = !$recording;
+        if ($recording) {
+            open $fh_ffmpeg, '|-', "$ffmpeg -r $fps -f rawvideo -pix_fmt rgba -s ${screen_width}x${screen_height} -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 1 -vf vflip output.mp4";
+            binmode $fh_ffmpeg;
+        } else {
+            close $fh_ffmpeg;
+        }
     } elsif ($key == ord('H') || $key == ord('h')) {
         print <<'HELP';
 
@@ -173,10 +212,12 @@ Keyboard
     M: toggle showing mass-SAMCON.
     O: toggle showing original SAMCON.
     C: center the character
-    9: decrease alpha
-    0: increase alpha
-    -: decrease number of samples shown
-    +: increase number of samples shown
+    Space: animate.
+    V: record video.
+    9: decrease alpha.
+    0: increase alpha.
+    -: decrease number of samples shown.
+    +: increase number of samples shown.
 
 Mouse
     Left button: rotate. Translate with X, Y or Z pressed.

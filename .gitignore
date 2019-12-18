@@ -39,3 +39,5 @@ inc/
 samples/
 samples_m/
 samples_o/
+*.mp4
+*.exe
