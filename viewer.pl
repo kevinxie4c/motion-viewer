@@ -59,8 +59,15 @@ sub render {
     $bvh->shader->set_mat4('proj', $camera->proj_matrix);
     $bvh->shader->set_vec3('color', $orange);
     $bvh->shader->set_float('alpha', 1.0);
-    $bvh->set_position($bvh->at_frame($frame));
+
+    my @tmp = $bvh->at_frame($frame);
+    $tmp[0] -= 50;
+    $bvh->set_position(@tmp);
+
+    #$bvh->set_position($bvh->at_frame($frame));
+    glEnable(GL_DEPTH_TEST);
     $bvh->draw;
+    glDisable(GL_DEPTH_TEST);
     $bvh->shader->set_float('alpha', $alpha);
     if ($show_m) {
         my $count = $num_of_samples;
@@ -84,12 +91,22 @@ sub render {
             last if $count-- <= 0;
             if ($show_pose) {
                 $bvh->shader->set_vec3('color', $red);
-                $bvh->set_position(@{$_->{pos}});
+
+                my @tmp = @{$_->{pos}};
+                $tmp[0] += 50;
+                $bvh->set_position(@tmp);
+
+                #$bvh->set_position(@{$_->{pos}});
                 $bvh->draw;
             }
             if ($show_ref) {
                 $bvh->shader->set_vec3('color', 0.7 * $red);
-                $bvh->set_position(@{$_->{ref}});
+                
+                my @tmp = @{$_->{ref}};
+                $tmp[0] += 50;
+                $bvh->set_position(@tmp);
+
+                #$bvh->set_position(@{$_->{ref}});
                 $bvh->draw;
             }
         }
@@ -262,8 +279,7 @@ glutReshapeFunc(sub {
 
 die "glewInit failed" unless glewInit() == GLEW_OK;
 
-glDisable(GL_DEPTH_TEST);
-#glEnable(GL_DEPTH_TEST);
+glEnable(GL_DEPTH_TEST);
 glEnable(GL_BLEND);
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 $shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
