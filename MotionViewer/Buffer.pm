@@ -36,7 +36,6 @@ sub vbo {
 
 sub vao {
     my $this = shift;
-    $this->{vao} = shift if @_;
     ($this->vao_array->retrieve(0, 1))[0];
 }
 
