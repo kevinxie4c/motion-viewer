@@ -1,6 +1,7 @@
 package MotionViewer::Compress;
 
 use File::Spec;
+use File::Path qw(remove_tree);
 use Carp;
 use Exporter 'import';
 use strict;
@@ -47,6 +48,7 @@ sub compress {
             push @list, $it;
             close $fh_in;
         }
+        remove_tree($itr_dir);
         $samples[$i] = [sort { $a->{cost} <=> $b->{cost} } @list];
     }
     open my $fh_out, '>:raw', File::Spec->catfile($dir, $sample_file_name);
