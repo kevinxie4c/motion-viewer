@@ -24,7 +24,8 @@ my ($show_m, $show_o) = (1, 1);
 my $itr = 0;
 #my $start_frame = 43;
 #my $start_frame = 57;
-my $start_frame = 12;
+#my $start_frame = 12;
+my $start_frame = 1006;
 my $frame = $start_frame;
 my ($samples_m, $samples_o);
 my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
@@ -40,7 +41,8 @@ my $fh_ffmpeg;
 my $recording = 0;
 
 #my $floor_y = 0;
-my $floor_y = 6.978;
+#my $floor_y = 6.978;
+my $floor_y = -0.257;
 my $floor_half_width = 500;
 my $floor_buffer;
 
@@ -442,7 +444,8 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 
 #$bvh = MotionViewer::BVH->load('walk.bvh');
 #$bvh = MotionViewer::BVH->load('cmu_run_filtered.bvh');
-$bvh = MotionViewer::BVH->load('Cyrus_Take6.bvh', 'sfu_jump_geometry_config.txt');
+#$bvh = MotionViewer::BVH->load('Cyrus_Take6.bvh', 'sfu_jump_geometry_config.txt');
+$bvh = MotionViewer::BVH->load('OptiTrack-IITSEC2007.bvh', 'sfu_jump_geometry_config.txt');
 $shader->use;
 $shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);

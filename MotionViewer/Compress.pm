@@ -51,7 +51,12 @@ sub compress {
         remove_tree($itr_dir);
         $samples[$i] = [sort { $a->{cost} <=> $b->{cost} } @list];
     }
-    open my $fh_out, '>:raw', File::Spec->catfile($dir, $sample_file_name);
+    my $file = File::Spec->catfile($dir, $sample_file_name);
+    if (-e $file) {
+        print "$file exists. No overwriting.\n";
+        return;
+    }
+    open my $fh_out, '>:raw', $file;
     for my $list(@samples) {
         next unless defined $list;
         print $fh_out pack('L', scalar(@$list));
