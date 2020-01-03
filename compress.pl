@@ -11,6 +11,7 @@ for my $sample_dir(qw(samples_m samples_o)) {
     for my $dir (glob $pat) {
         my (undef, $round_dir, $trial_dir) = File::Spec->splitdir($dir);
         next unless $round_dir =~ /^\d+$/ && $trial_dir =~ /^\d+$/;
+        print "compressing $dir\n";
         compress($dir);
     }
 }
