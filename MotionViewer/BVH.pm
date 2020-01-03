@@ -10,7 +10,9 @@ use warnings;
 
 sub load {
     my $class = shift;
-    my $this = $class->SUPER::load(@_);
+    my $this = $class->SUPER::load(shift);
+
+    $this->load_geometry_config(shift) if @_;
     
     for my $joint($this->joints) {
         my @vertices;
@@ -24,11 +26,15 @@ sub load {
         #}
 
         # cube
-        for ($joint->children) {
-            push @vertices, &create_cube($_->offset);
-        }
-        if ($joint->end_site) {
-            push @vertices, &create_cube($joint->end_site);
+        if (exists $this->{geometry_config}{$joint->name}) {
+            @vertices = @{$this->{geometry_config}{$joint->name}};
+        } else {
+            for ($joint->children) {
+                push @vertices, &create_cube($_->offset);
+            }
+            if ($joint->end_site) {
+                push @vertices, &create_cube($joint->end_site);
+            }
         }
         #print "@vertices\n";
         
@@ -58,15 +64,17 @@ sub set_position {
         $_->{position} = [splice(@_, 0, scalar($_->channels))];
     }
 }
+
+my $identity_mat = GLM::Mat4->new(
+    1, 0, 0, 0, 
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+);
     
 sub draw {
     my $this = shift;
-    my $model_matrix = GLM::Mat4->new(
-        1, 0, 0, 0, 
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-    );
+    my $model_matrix = GLM::Mat4->new($identity_mat);
     $this->draw_joint($this->root, $model_matrix);
 }
 
@@ -199,6 +207,88 @@ sub create_cube {
     push @vertices, @b, @n6, @f, @n6, @g, @n6;
 
     @vertices;
+}
+
+sub load_geometry_config {
+    my $this = shift;
+    my $filename = shift;
+    open my $fh_in, '<', $filename;
+    my $state = 0;
+    my @vlist;
+    my ($node, $translate, $rotate);
+    while (<$fh_in>) {
+        chomp;
+        next if /^#/ or /^\s*$/;
+
+        if ($state == 0) {
+            my @list = split;
+            if (shift(@list) eq 'cube') {
+                my ($lx, $ly, $lz) = map $_ / 2, @list;
+                my ($a, $b, $c, $d, $e, $f, $g, $h);
+#   a                e
+#    +--------------+
+#    |\              \
+#    | \ d            \ h
+#    |  +--------------+
+#    |  |              |
+#    +  |           +  |
+#   b \ |          f   |
+#      \|              |
+#       +--------------+
+#      c                g
+#       
+#    y  |
+#       |  x
+#       +----
+#        \
+#      z  \
+                $a = GLM::Vec4->new(-$lx,  $ly, -$lz, 1);
+                $b = GLM::Vec4->new(-$lx, -$ly, -$lz, 1);
+                $c = GLM::Vec4->new(-$lx, -$ly,  $lz, 1);
+                $d = GLM::Vec4->new(-$lx,  $ly,  $lz, 1);
+                $e = GLM::Vec4->new( $lx,  $ly, -$lz, 1);
+                $f = GLM::Vec4->new( $lx, -$ly, -$lz, 1);
+                $g = GLM::Vec4->new( $lx, -$ly,  $lz, 1);
+                $h = GLM::Vec4->new( $lx,  $ly,  $lz, 1);
+                
+                my ($nx, $ny, $nz);
+                $nx = GLM::Vec4->new(1, 0, 0, 0);
+                $ny = GLM::Vec4->new(0, 1, 0, 0);
+                $nz = GLM::Vec4->new(0, 0, 1, 0);
+                
+                push @vlist, $a, -$nx, $b, -$nx, $c, -$nx;
+                push @vlist, $c, -$nx, $d, -$nx, $a, -$nx;
+
+                push @vlist, $g,  $nx, $f,  $nx, $e,  $nx;
+                push @vlist, $e,  $nx, $h,  $nx, $g,  $nx;
+
+                push @vlist, $d,  $nz, $c,  $nz, $g,  $nz;
+                push @vlist, $g,  $nz, $h,  $nz, $d,  $nz;
+
+                push @vlist, $f, -$nz, $b, -$nz, $a, -$nz;
+                push @vlist, $a, -$nz, $e, -$nz, $f, -$nz;
+
+                push @vlist, $a,  $ny, $d,  $ny, $h,  $ny;
+                push @vlist, $h,  $ny, $e,  $ny, $a,  $ny;
+
+                push @vlist, $g, -$ny, $c, -$ny, $b, -$ny;
+                push @vlist, $b, -$ny, $f, -$ny, $g, -$ny;
+
+            } else {
+                croak "$list[0]: not implemented\n";
+            }
+        } elsif ($state == 1) {
+            $node = $_;
+        } elsif ($state == 2) {
+            $translate = GLM::Functions::translate($identity_mat, GLM::Vec3->new(split));
+        } elsif ($state == 3) {
+            $rotate = GLM::Mat4->new($identity_mat); # ignore rotation now...
+            $this->{geometry_config}{$node} = [map { my $v = $translate * $rotate * $_; ($v->x, $v->y, $v->z); } @vlist];
+        }
+
+        $state = ($state + 1) % 4;
+    }
+    close $fh_in;
 }
 
 1;

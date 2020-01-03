@@ -39,7 +39,8 @@ my $ffmpeg = $^O eq 'MSWin32' ? 'ffmpeg.exe': 'ffmpeg';
 my $fh_ffmpeg;
 my $recording = 0;
 
-my $floor_y = 0;
+#my $floor_y = 0;
+my $floor_y = 6.978;
 my $floor_half_width = 500;
 my $floor_buffer;
 
@@ -441,7 +442,7 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 
 #$bvh = MotionViewer::BVH->load('walk.bvh');
 #$bvh = MotionViewer::BVH->load('cmu_run_filtered.bvh');
-$bvh = MotionViewer::BVH->load('Cyrus_Take6.bvh');
+$bvh = MotionViewer::BVH->load('Cyrus_Take6.bvh', 'sfu_jump_geometry_config.txt');
 $shader->use;
 $shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
