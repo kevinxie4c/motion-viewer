@@ -46,9 +46,9 @@ my $ffmpeg = $^O eq 'MSWin32' ? 'ffmpeg.exe': 'ffmpeg';
 my $fh_ffmpeg;
 my $recording = 0;
 
-#my $floor_y = 0;
+my $floor_y = 0;
 #my $floor_y = 6.978;
-my $floor_y = -0.257;
+#my $floor_y = -0.257;
 my $floor_half_width = 500;
 my $floor_buffer;
 my $cube_buffer;
@@ -63,11 +63,21 @@ my $geometry_file;
 GetOptions('mass=s'     => \$m_dir,
            'origin=s'   => \$o_dir,
            'start=i'    => \$start_frame,
+           'floory=f'   => \$floor_y,
            'geo=s'      => \$geometry_file);
 
 die "need specifying bvh filename\n" unless @ARGV;
 my $bvh_file = shift @ARGV;
 my $frame = $start_frame;
+
+my @motions;
+for my $file (@ARGV) {
+    open my $fh, '<', $file;
+    while (<$fh>) {
+        push @motions, [split];
+    }
+    close $fh;
+}
 
 my $identity_mat = GLM::Mat4->new(
     1, 0, 0, 0,
@@ -538,6 +548,11 @@ if ($geometry_file) {
     $bvh = MotionViewer::BVH->load($bvh_file, $geometry_file);
 } else {
     $bvh = MotionViewer::BVH->load($bvh_file);
+}
+$bvh->frames(scalar(@motions));
+my $i = 0;
+for (@motions) {
+    $bvh->at_frame($i++, @$_);
 }
 $shader->use;
 $shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
