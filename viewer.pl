@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+use Getopt::Long;
 use OpenGL::Modern qw(:all);
 use OpenGL::GLUT qw(:all);
 use OpenGL::Array;
@@ -21,19 +22,22 @@ my $bvh;
 my ($round, $trial) = (1, 1);
 my ($show_pose, $show_ref) = (1, 0);
 my ($show_m, $show_o) = (1, 1);
+my ($m_dir, $o_dir);
 my $itr = 0;
-my $start_frame = 43;
+my $start_frame = 0;
+#my $start_frame = 43;
 #my $start_frame = 57;
 #my $start_frame = 12;
 #my $start_frame = 1006;
-my $frame = $start_frame;
-#my ($samples_m, $samples_o);
-my ($samples);
+my ($samples_m, $samples_o);
+#my ($samples);
+
 my $orange = GLM::Vec3->new(1.0, 0.5, 0.2);
-my $red = GLM::Vec3->new(1.0, 0.0, 0.0);
-my $blue = GLM::Vec3->new(0.0, 0.0, 1.0);
-my $white = GLM::Vec3->new(1.0, 1.0, 1.0);
-my $green = GLM::Vec3->new(0.0, 1.0, 0.0);
+my $red    = GLM::Vec3->new(1.0, 0.0, 0.0);
+my $blue   = GLM::Vec3->new(0.0, 0.0, 1.0);
+my $white  = GLM::Vec3->new(1.0, 1.0, 1.0);
+my $green  = GLM::Vec3->new(0.0, 1.0, 0.0);
+
 my $alpha = 0.1;
 my $num_of_samples = 20;
 my $animate = 0;
@@ -55,6 +59,16 @@ my ($shadow_map_buffer, $shadow_map_texture);
 my $light_space_matrix;
 my ($light_near, $light_far) = (1, 1000);
 
+my $geometry_file;
+GetOptions('mass=s'     => \$m_dir,
+           'origin=s'   => \$o_dir,
+           'start=i'    => \$start_frame,
+           'geo=s'      => \$geometry_file);
+
+die "need specifying bvh filename\n" unless @ARGV;
+my $bvh_file = shift @ARGV;
+my $frame = $start_frame;
+
 my $identity_mat = GLM::Mat4->new(
     1, 0, 0, 0,
     0, 1, 0, 0,
@@ -64,18 +78,23 @@ my $identity_mat = GLM::Mat4->new(
 
 
 sub load_sample {
-    #my $trial_dir_m = File::Spec->catdir('samples_m', $round, $trial);
-    #my $trial_dir_o = File::Spec->catdir('samples_o', $round, $trial);
-    my $trial_dir = File::Spec->catdir('samples', $round, $trial);
-    #if (-d $trial_dir_m && -d $trial_dir_o) {
-    if (-d $trial_dir) {
-        print "round=$round, trial = $trial\n";
-        #$samples_m = decompress $trial_dir_m;
-        #$samples_o = decompress $trial_dir_o;
-        $samples = decompress $trial_dir;
-    } else {
-        #warn "cannot open $trial_dir_m or $trial_dir_o\n";
-        warn "cannot open $trial_dir\n";
+    if ($m_dir) {
+        my $trial_dir_m = File::Spec->catdir($m_dir, $round, $trial);
+        if (-d $trial_dir_m) {
+            print "mass:   round=$round, trial = $trial\n";
+            $samples_m = decompress $trial_dir_m;
+        } else {
+            warn "cannot open $trial_dir_m";
+        }
+    }
+    if ($o_dir) {
+        my $trial_dir_o = File::Spec->catdir($o_dir, $round, $trial);
+        if (-d $trial_dir_o) {
+            print "origin: round=$round, trial = $trial\n";
+            $samples_o = decompress $trial_dir_o;
+        } else {
+            warn "cannot open $trial_dir_o";
+        }
     }
 }
 
@@ -199,10 +218,9 @@ sub create_shadow_map {
 
     $bvh->set_position($bvh->at_frame($frame));
     $bvh->draw;
-    if ($show_m) {
+    if ($show_m && $samples_m) {
         my $count = $num_of_samples;
-        #for (@{$samples_m->[$itr]}) {
-        for (@{$samples->[$itr]}) {
+        for (@{$samples_m->[$itr]}) {
             last if $count-- <= 0;
             if ($show_pose) {
                 $bvh->set_position(@{$_->{pos}});
@@ -214,28 +232,28 @@ sub create_shadow_map {
             }
         }
     }
-    #if ($show_o) {
-    #    my $count = $num_of_samples;
-    #    for (@{$samples_o->[$itr]}) {
-    #        last if $count-- <= 0;
-    #        if ($show_pose) {
-    #            my @tmp = @{$_->{pos}};
-    #            $tmp[0] += 50;
-    #            $bvh->set_position(@tmp);
+    if ($show_o && $samples_o) {
+        my $count = $num_of_samples;
+        for (@{$samples_o->[$itr]}) {
+            last if $count-- <= 0;
+            if ($show_pose) {
+                my @tmp = @{$_->{pos}};
+                $tmp[0] += 50;
+                $bvh->set_position(@tmp);
 
-    #            $bvh->set_position(@{$_->{pos}});
-    #            $bvh->draw;
-    #        }
-    #        if ($show_ref) {
-    #            my @tmp = @{$_->{ref}};
-    #            $tmp[0] += 50;
-    #            $bvh->set_position(@tmp);
+                $bvh->set_position(@{$_->{pos}});
+                $bvh->draw;
+            }
+            if ($show_ref) {
+                my @tmp = @{$_->{ref}};
+                $tmp[0] += 50;
+                $bvh->set_position(@tmp);
 
-    #            $bvh->set_position(@{$_->{ref}});
-    #            $bvh->draw;
-    #        }
-    #    }
-    #}
+                $bvh->set_position(@{$_->{ref}});
+                $bvh->draw;
+            }
+        }
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -282,10 +300,9 @@ sub render {
 
     glDisable(GL_DEPTH_TEST);
     $shader->set_float('alpha', $alpha);
-    if ($show_m) {
+    if ($show_m && $samples_m) {
         my $count = $num_of_samples;
-        #for (@{$samples_m->[$itr]}) {
-        for (@{$samples->[$itr]}) {
+        for (@{$samples_m->[$itr]}) {
             last if $count-- <= 0;
             if ($show_pose) {
                 $shader->set_vec3('color', $blue);
@@ -297,36 +314,36 @@ sub render {
                 $bvh->set_position(@{$_->{ref}});
                 $bvh->draw;
             }
-            $shader->set_vec3('color', $green);
-            draw_cube(map $_ * 100, @{$_->{zmp}});
+            #$shader->set_vec3('color', $green);
+            #draw_cube(map $_ * 100, @{$_->{zmp}});
         }
     }
-    #if ($show_o) {
-    #    my $count = $num_of_samples;
-    #    for (@{$samples_o->[$itr]}) {
-    #        last if $count-- <= 0;
-    #        if ($show_pose) {
-    #            $shader->set_vec3('color', $red);
+    if ($show_o && $samples_o) {
+        my $count = $num_of_samples;
+        for (@{$samples_o->[$itr]}) {
+            last if $count-- <= 0;
+            if ($show_pose) {
+                $shader->set_vec3('color', $red);
 
-    #            my @tmp = @{$_->{pos}};
-    #            $tmp[0] += 50;
-    #            $bvh->set_position(@tmp);
+                my @tmp = @{$_->{pos}};
+                $tmp[0] += 50;
+                $bvh->set_position(@tmp);
 
-    #            $bvh->set_position(@{$_->{pos}});
-    #            $bvh->draw;
-    #        }
-    #        if ($show_ref) {
-    #            $shader->set_vec3('color', 0.7 * $red);
-    #            
-    #            my @tmp = @{$_->{ref}};
-    #            $tmp[0] += 50;
-    #            $bvh->set_position(@tmp);
+                $bvh->set_position(@{$_->{pos}});
+                $bvh->draw;
+            }
+            if ($show_ref) {
+                $shader->set_vec3('color', 0.7 * $red);
+                
+                my @tmp = @{$_->{ref}};
+                $tmp[0] += 50;
+                $bvh->set_position(@tmp);
 
-    #            $bvh->set_position(@{$_->{ref}});
-    #            $bvh->draw;
-    #        }
-    #    }
-    #}
+                $bvh->set_position(@{$_->{ref}});
+                $bvh->draw;
+            }
+        }
+    }
     glutSwapBuffers();
     if ($recording) {
         my $buffer = OpenGL::Array->new($screen_width * $screen_height * 4, GL_BYTE);
@@ -337,8 +354,8 @@ sub render {
 
 sub timer {
     if ($animate) {
-        #if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples_m && $itr + 1 < @$samples_o) {
-        if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples) {
+        if ($frame + 10 < $bvh->frames && (!defined($samples_m) || $itr + 1 < @$samples_m) && (!defined($samples_o) || $itr + 1 < @$samples_o)) {
+        #if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples) {
             $frame += 10;
             ++$itr;
         } else {
@@ -356,8 +373,8 @@ sub keyboard {
         destroy_shadow_map;
         glutDestroyWindow($win_id);
     } elsif ($key == ord('F') || $key == ord('f')) {
-        #if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples_m && $itr + 1 < @$samples_o) {
-        if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples) {
+        if ($frame + 10 < $bvh->frames && (!defined($samples_m) || $itr + 1 < @$samples_m) && (!defined($samples_o) || $itr + 1 < @$samples_o)) {
+        #if ($frame + 10 < $bvh->frames && $itr + 1 < @$samples) {
             $frame += 10;
             ++$itr;
             glutPostRedisplay;
@@ -517,7 +534,11 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 #$bvh = MotionViewer::BVH->load('cmu_run_filtered.bvh');
 #$bvh = MotionViewer::BVH->load('Cyrus_Take6.bvh', 'sfu_jump_geometry_config.txt');
 #$bvh = MotionViewer::BVH->load('OptiTrack-IITSEC2007.bvh', 'sfu_jump_geometry_config.txt');
-$bvh = MotionViewer::BVH->load('walk.bvh', 'sfu_jump_geometry_config.txt');
+if ($geometry_file) {
+    $bvh = MotionViewer::BVH->load($bvh_file, $geometry_file);
+} else {
+    $bvh = MotionViewer::BVH->load($bvh_file);
+}
 $shader->use;
 $shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
