@@ -8,7 +8,8 @@ use strict;
 use warnings;
 
 my $pm = Parallel::ForkManager->new(8);
-for my $sample_dir(qw(samples_m samples_o)) {
+#for my $sample_dir(qw(samples_m samples_o)) {
+for my $sample_dir(qw(samples)) {
     my $pat = File::Spec->catdir($sample_dir, '*', '*');
     DIR:
     for my $dir (glob $pat) {

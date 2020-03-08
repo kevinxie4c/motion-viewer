@@ -45,6 +45,8 @@ sub compress {
             $it->{ref} = [split];
             $_ = <$fh_in>;
             $it->{cost} = $_;
+            $_ = <$fh_in>; # tmp
+            $it->{zmp} = [split]; # tmp
             push @list, $it;
             close $fh_in;
         }
@@ -64,11 +66,13 @@ sub compress {
             my @pos = @{$_->{pos}};
             my @ref = @{$_->{ref}};
             my $cost = $_->{cost};
+            my @zmp = @{$_->{zmp}}; #tmp
             print $fh_out pack('L', scalar(@pos));
             print $fh_out pack('d*', @pos);
             print $fh_out pack('L', scalar(@ref));
             print $fh_out pack('d*', @ref);
             print $fh_out pack('d', $cost);
+            print $fh_out pack('d3', @zmp); #tmp
         }
     }
     close $fh_out;
@@ -100,7 +104,11 @@ sub decompress {
 
             read($fh_in, $cost, $size_float);
             $cost = unpack 'd', $cost;
-            push @{$samples->[$i]}, { pos => \@pos, ref => \@ref, cost => $cost };
+            
+            read($fh_in, $buf, 3 * $size_float); # tmp;
+            my @zmp = unpack "d3", $buf; # tmp
+            #push @{$samples->[$i]}, { pos => \@pos, ref => \@ref, cost => $cost };
+            push @{$samples->[$i]}, { pos => \@pos, ref => \@ref, cost => $cost, zmp => \@zmp }; # tmp
         }
         ++$i;
     }
