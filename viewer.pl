@@ -527,8 +527,8 @@ die "glewInit failed" unless glewInit() == GLEW_OK;
 glEnable(GL_DEPTH_TEST);
 glEnable(GL_BLEND);
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-$shader = MotionViewer::Shader->load('simple.vs', 'simple.fs');
-$shadow_map_shader = MotionViewer::Shader->load('shadow_map.vs', 'shadow_map.fs');
+$shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'simple.vs'), File::Spec->catdir($Bin, 'simple.fs'));
+$shadow_map_shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'shadow_map.vs'), File::Spec->catdir($Bin, 'shadow_map.fs'));
 #my @vertices = (
 #     0.00,  0.25, 0.00,
 #    -0.25, -0.25, 0.00,
@@ -549,10 +549,12 @@ if ($geometry_file) {
 } else {
     $bvh = MotionViewer::BVH->load($bvh_file);
 }
-$bvh->frames(scalar(@motions));
-my $i = 0;
-for (@motions) {
-    $bvh->at_frame($i++, @$_);
+if (@motions) {
+    $bvh->frames(scalar(@motions));
+    my $i = 0;
+    for (@motions) {
+        $bvh->at_frame($i++, @$_);
+    }
 }
 $shader->use;
 $shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
