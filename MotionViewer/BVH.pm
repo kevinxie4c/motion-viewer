@@ -221,6 +221,7 @@ sub load_geometry_config {
         next if /^#/ or /^\s*$/;
 
         if ($state == 0) {
+            @vlist = ();
             my @list = split;
             if (shift(@list) eq 'cube') {
                 my ($lx, $ly, $lz) = map $_ / 2, @list;
@@ -282,7 +283,8 @@ sub load_geometry_config {
         } elsif ($state == 2) {
             $translate = GLM::Functions::translate($identity_mat, GLM::Vec3->new(split));
         } elsif ($state == 3) {
-            $rotate = GLM::Mat4->new($identity_mat); # ignore rotation now...
+            my ($rx, $ry, $rz) = split;
+            $rotate = GLM::Functions::rotate($identity_mat, $rx, $axis{X}) * GLM::Functions::rotate($identity_mat, $ry, $axis{Y}) * GLM::Functions::rotate($identity_mat, $rz, $axis{Z});
             $this->{geometry_config}{$node} = [map { my $v = $translate * $rotate * $_; ($v->x, $v->y, $v->z); } @vlist];
         }
 

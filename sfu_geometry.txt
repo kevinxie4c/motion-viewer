@@ -3,14 +3,30 @@ cube 8 4 20
 # parent
 LeftFoot
 # translation
-0.0000 -5.0000 8.0000
+0.0000 -4.0000 6.5000
 # rotation (euler angle XYZ)
-0.0000 0.0000 0.0000
+0.0600 0.0000 0.0000
 # cube x y z
 cube 8 4 20
 # parent
 RightFoot
 # translation
-0.0000 -5.0000 8.0000
+0.0000 -4.5000 6.5000
 # rotation (euler angle XYZ)
-0.0000 0.0000 0.0000
+0.2400 0.0000 0.1000
+# cube x y z
+cube 6 4 4
+# parent
+LeftToeBase
+# translation
+0.0000 -1.0000 4.0000
+# rotation (euler angle XYZ)
+0.1000 0.0000 0.0000
+# cube x y z
+cube 6 4 4
+# parent
+RightToeBase
+# translation
+0.0000 -2.6000 4.0000
+# rotation (euler angle XYZ)
+0.0000 0.0000 0.1000
