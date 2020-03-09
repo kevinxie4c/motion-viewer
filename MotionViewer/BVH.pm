@@ -147,7 +147,7 @@ sub draw_joint {
 #        \
 #      e2 \
 sub create_cube {
-    my $w = 1.0;
+    my $w = 3.0;
     my @vertices;
 
     my $p1 = GLM::Vec3->new(0);
