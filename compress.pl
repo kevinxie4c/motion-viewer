@@ -8,15 +8,15 @@ use strict;
 use warnings;
 
 my $pm = Parallel::ForkManager->new(8);
-#for my $sample_dir(qw(samples_m samples_o)) {
-for my $sample_dir(qw(samples)) {
+for my $sample_dir(@ARGV) {
     my $pat = File::Spec->catdir($sample_dir, '*', '*');
     DIR:
     for my $dir (glob $pat) {
         $pm->start and next DIR;
 
-        my (undef, $round_dir, $trial_dir) = File::Spec->splitdir($dir);
-        next unless $round_dir =~ /^\d+$/ && $trial_dir =~ /^\d+$/;
+        my @paths = File::Spec->splitdir($dir);
+        my ($round_dir, $trial_dir) = splice @paths, -2, 2;
+        $pm->finish unless $round_dir =~ /^\d+$/ && $trial_dir =~ /^\d+$/;
         print "compressing $dir\n";
         compress($dir);
 
