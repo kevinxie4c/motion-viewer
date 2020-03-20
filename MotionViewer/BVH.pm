@@ -209,6 +209,114 @@ sub create_cube {
     @vertices;
 }
 
+sub cube_mesh {
+    my ($lx, $ly, $lz) = map $_ / 2, @_;
+    my ($a, $b, $c, $d, $e, $f, $g, $h);
+    #   a                e
+    #    +--------------+
+    #    |\              \
+    #    | \ d            \ h
+    #    |  +--------------+
+    #    |  |              |
+    #    +  |           +  |
+    #   b \ |          f   |
+    #      \|              |
+    #       +--------------+
+    #      c                g
+    #       
+    #    y  |
+    #       |  x
+    #       +----
+    #        \
+    #      z  \
+    $a = GLM::Vec4->new(-$lx,  $ly, -$lz, 1);
+    $b = GLM::Vec4->new(-$lx, -$ly, -$lz, 1);
+    $c = GLM::Vec4->new(-$lx, -$ly,  $lz, 1);
+    $d = GLM::Vec4->new(-$lx,  $ly,  $lz, 1);
+    $e = GLM::Vec4->new( $lx,  $ly, -$lz, 1);
+    $f = GLM::Vec4->new( $lx, -$ly, -$lz, 1);
+    $g = GLM::Vec4->new( $lx, -$ly,  $lz, 1);
+    $h = GLM::Vec4->new( $lx,  $ly,  $lz, 1);
+
+    my ($nx, $ny, $nz);
+    my @vlist;
+    $nx = GLM::Vec4->new(1, 0, 0, 0);
+    $ny = GLM::Vec4->new(0, 1, 0, 0);
+    $nz = GLM::Vec4->new(0, 0, 1, 0);
+
+    push @vlist, $a, -$nx, $b, -$nx, $c, -$nx;
+    push @vlist, $c, -$nx, $d, -$nx, $a, -$nx;
+
+    push @vlist, $g,  $nx, $f,  $nx, $e,  $nx;
+    push @vlist, $e,  $nx, $h,  $nx, $g,  $nx;
+
+    push @vlist, $d,  $nz, $c,  $nz, $g,  $nz;
+    push @vlist, $g,  $nz, $h,  $nz, $d,  $nz;
+
+    push @vlist, $f, -$nz, $b, -$nz, $a, -$nz;
+    push @vlist, $a, -$nz, $e, -$nz, $f, -$nz;
+
+    push @vlist, $a,  $ny, $d,  $ny, $h,  $ny;
+    push @vlist, $h,  $ny, $e,  $ny, $a,  $ny;
+
+    push @vlist, $g, -$ny, $c, -$ny, $b, -$ny;
+    push @vlist, $b, -$ny, $f, -$ny, $g, -$ny;
+    @vlist;
+}
+
+sub sphere_mesh {
+    my ($xo, $yo, $zo, $r, $s) = @_; # x, y, z, radius, slice
+    my @vlist;
+    for (my $i = 0; $i < $s; ++$i) {
+        my $theta1 = pi / $s * $i;
+        my $theta2 = pi / $s * ($i + 1);
+        my $y1 = cos($theta1);
+        my $y2 = cos($theta2);
+        my $r1 = sin($theta1);
+        my $r2 = sin($theta2);
+        for (my $j = 0; $j < $s * 2; ++$j) {
+            my $phi1 = pi / $s * $j;
+            my $phi2 = pi / $s * ($j + 1);
+            my $za = $r1 * cos($phi1);
+            my $xa = $r1 * sin($phi1);
+            my $zb = $r2 * cos($phi1);
+            my $xb = $r2 * sin($phi1);
+            my $zc = $r2 * cos($phi2);
+            my $xc = $r2 * sin($phi2);
+            my $zd = $r1 * cos($phi2);
+            my $xd = $r1 * sin($phi2);
+            my ($a, $b, $c, $d, $n);
+            $a = GLM::Vec3->new($xa, $y1, $za);
+            $b = GLM::Vec3->new($xb, $y2, $zb);
+            $c = GLM::Vec3->new($xc, $y2, $zc);
+            $d = GLM::Vec3->new($xd, $y1, $zd);
+            $n = $a + $b + $c + $d;
+            $n->normalize;
+            $n = GLM::Vec4->new($n->x, $n->y, $n->z, 0);
+            $a *= $r;
+            $b *= $r;
+            $c *= $r;
+            $d *= $r;
+            my $o = GLM::Vec3->new($xo, $yo, $zo);
+            $a += $o;
+            $b += $o;
+            $c += $o;
+            $d += $o;
+            $a = GLM::Vec4->new($a->x, $a->y, $a->z, 1);
+            $b = GLM::Vec4->new($b->x, $b->y, $b->z, 1);
+            $c = GLM::Vec4->new($c->x, $c->y, $c->z, 1);
+            $d = GLM::Vec4->new($d->x, $d->y, $d->z, 1);
+            push @vlist, $a, $n;
+            push @vlist, $b, $n;
+            push @vlist, $c, $n;
+            push @vlist, $c, $n;
+            push @vlist, $d, $n;
+            push @vlist, $a, $n;
+        }
+    }
+    @vlist;
+}
+
 sub load_geometry_config {
     my $this = shift;
     my $filename = shift;
@@ -223,58 +331,11 @@ sub load_geometry_config {
         if ($state == 0) {
             @vlist = ();
             my @list = split;
-            if (shift(@list) eq 'cube') {
-                my ($lx, $ly, $lz) = map $_ / 2, @list;
-                my ($a, $b, $c, $d, $e, $f, $g, $h);
-#   a                e
-#    +--------------+
-#    |\              \
-#    | \ d            \ h
-#    |  +--------------+
-#    |  |              |
-#    +  |           +  |
-#   b \ |          f   |
-#      \|              |
-#       +--------------+
-#      c                g
-#       
-#    y  |
-#       |  x
-#       +----
-#        \
-#      z  \
-                $a = GLM::Vec4->new(-$lx,  $ly, -$lz, 1);
-                $b = GLM::Vec4->new(-$lx, -$ly, -$lz, 1);
-                $c = GLM::Vec4->new(-$lx, -$ly,  $lz, 1);
-                $d = GLM::Vec4->new(-$lx,  $ly,  $lz, 1);
-                $e = GLM::Vec4->new( $lx,  $ly, -$lz, 1);
-                $f = GLM::Vec4->new( $lx, -$ly, -$lz, 1);
-                $g = GLM::Vec4->new( $lx, -$ly,  $lz, 1);
-                $h = GLM::Vec4->new( $lx,  $ly,  $lz, 1);
-                
-                my ($nx, $ny, $nz);
-                $nx = GLM::Vec4->new(1, 0, 0, 0);
-                $ny = GLM::Vec4->new(0, 1, 0, 0);
-                $nz = GLM::Vec4->new(0, 0, 1, 0);
-                
-                push @vlist, $a, -$nx, $b, -$nx, $c, -$nx;
-                push @vlist, $c, -$nx, $d, -$nx, $a, -$nx;
-
-                push @vlist, $g,  $nx, $f,  $nx, $e,  $nx;
-                push @vlist, $e,  $nx, $h,  $nx, $g,  $nx;
-
-                push @vlist, $d,  $nz, $c,  $nz, $g,  $nz;
-                push @vlist, $g,  $nz, $h,  $nz, $d,  $nz;
-
-                push @vlist, $f, -$nz, $b, -$nz, $a, -$nz;
-                push @vlist, $a, -$nz, $e, -$nz, $f, -$nz;
-
-                push @vlist, $a,  $ny, $d,  $ny, $h,  $ny;
-                push @vlist, $h,  $ny, $e,  $ny, $a,  $ny;
-
-                push @vlist, $g, -$ny, $c, -$ny, $b, -$ny;
-                push @vlist, $b, -$ny, $f, -$ny, $g, -$ny;
-
+            my $shape = shift @list;
+            if ($shape eq 'cube') {
+                push @vlist, cube_mesh(@list);
+            } elsif ($shape eq 'sphere') {
+                push @vlist, sphere_mesh(@list);
             } else {
                 croak "$list[0]: not implemented\n";
             }
@@ -285,7 +346,7 @@ sub load_geometry_config {
         } elsif ($state == 3) {
             my ($rx, $ry, $rz) = split;
             $rotate = GLM::Functions::rotate($identity_mat, $rx, $axis{X}) * GLM::Functions::rotate($identity_mat, $ry, $axis{Y}) * GLM::Functions::rotate($identity_mat, $rz, $axis{Z});
-            $this->{geometry_config}{$node} = [map { my $v = $translate * $rotate * $_; ($v->x, $v->y, $v->z); } @vlist];
+            push @{$this->{geometry_config}{$node}}, map { my $v = $translate * $rotate * $_; ($v->x, $v->y, $v->z); } @vlist;
         }
 
         $state = ($state + 1) % 4;

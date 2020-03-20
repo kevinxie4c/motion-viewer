@@ -6,11 +6,33 @@ LeftAnkle
 0.0000 -5.0000 8.0000
 # rotation (euler angle XYZ)
 0.0000 0.0000 0.0000
-# cube x y z
-cube 8 4 20
+## cube x y z
+#cube 8 4 20
+## parent
+#RightAnkle
+## translation
+#0.0000 -5.0000 8.0000
+## rotation (euler angle XYZ)
+#0.0000 0.0000 0.0000
+# sphere x y z radius slice
+sphere 0 -5 -2 3 10
 # parent
 RightAnkle
 # translation
-0.0000 -5.0000 8.0000
-# rotation (euler angle XYZ)
 0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+3.06757 -2.9533 -3.1261
+sphere 2 -5 16 3 10
+# parent
+RightAnkle
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+3.06757 -2.9533 -3.1261
+sphere -2 -5 16 3 10
+# parent
+RightAnkle
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+3.06757 -2.9533 -3.1261
