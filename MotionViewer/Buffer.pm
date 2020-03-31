@@ -6,7 +6,7 @@ use OpenGL::Array;
 
 sub new {
     my $class = shift;
-    croak 'usage: ' . $this . '->new($number_of_attributes, @data' if @_ < 2;
+    croak 'usage: ' . $class . '->new($number_of_attributes, @data' if @_ < 1;
     my $this = bless {}, $class;
     my ($num_attr, @data) = @_;
 

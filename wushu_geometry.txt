@@ -1,0 +1,64 @@
+# sphere x y z radius slice
+sphere 0 -5 -2 3 10
+# parent
+LeftFoot
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0.0357775 -0.00573637 0.355485
+# sphere x y z radius slice
+sphere 2 -5 16 3 10
+# parent
+LeftFoot
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0.0357775 -0.00573637 0.355485
+# sphere x y z radius slice
+sphere -2 -5 16 3 10
+# parent
+LeftFoot
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0.0357775 -0.00573637 0.355485
+# sphere x y z radius slice
+sphere 0 -5 -2 3 10
+# parent
+RightFoot
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0.127117 0.189779 0.0419191
+# sphere x y z radius slice
+sphere 2 -5 16 3 10
+# parent
+RightFoot
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0.127117 0.189779 0.0419191
+# sphere x y z radius slice
+sphere -2 -5 16 3 10
+# parent
+RightFoot
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0.127117 0.189779 0.0419191
+# sphere x y z radius slice
+sphere 0 0 0 0.01 10
+# parent
+LeftToeBase
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0 0 0
+# sphere x y z radius slice
+sphere 0 0 0 0.01 10
+# parent
+RightToeBase
+# translation
+0.0000 0.0000 0.0000
+# rotation (euler angle XYZ)
+0 0 0

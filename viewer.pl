@@ -60,11 +60,16 @@ my $light_space_matrix;
 my ($light_near, $light_far) = (1, 1000);
 
 my $geometry_file;
+my $contact_force_file;
+
+my $primitive_shader;
+
 GetOptions('mass=s'     => \$m_dir,
            'origin=s'   => \$o_dir,
            'start=i'    => \$start_frame,
            'floory=f'   => \$floor_y,
-           'geo=s'      => \$geometry_file);
+           'geo=s'      => \$geometry_file,
+           'contact=s'  => \$contact_force_file);
 
 die "need specifying bvh filename\n" unless @ARGV;
 my $bvh_file = shift @ARGV;
@@ -77,6 +82,19 @@ for my $file (@ARGV) {
         push @motions, [split];
     }
     close $fh;
+}
+
+my @contact_forces;
+open my $fh, '<', $contact_force_file;
+while (<$fh>) {
+    my @a = split;
+    for (my $i = 3; $i < @a; $i += 3) {
+        for my $j(0..2) {
+            $a[$i + $j - 3] *= 100;
+            $a[$i + $j] = $a[$i + $j - 3] + $a[$i + $j] / 10;
+        }
+    }
+    push @contact_forces, \@a;
 }
 
 my $identity_mat = GLM::Mat4->new(
@@ -185,6 +203,12 @@ sub draw_cube {
     $shader->set_mat4('model', $translate);
     $cube_buffer->bind;
     glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+sub draw_lines {
+    my $line_buffer = MotionViewer::Buffer->new(1, @_);
+    $line_buffer->bind;
+    glDrawArrays(GL_LINES, 0, @_ / 3);
 }
 
 sub init_shadow_map {
@@ -353,6 +377,14 @@ sub render {
                 $bvh->draw;
             }
         }
+    }
+    if ($frame < @contact_forces) {
+        $primitive_shader->use;
+        $primitive_shader->set_mat4('view', $camera->view_matrix);
+        $primitive_shader->set_mat4('proj', $camera->proj_matrix);
+        $primitive_shader->set_mat4('model', $identity_mat);
+        $primitive_shader->set_vec3('color', $green);
+        draw_lines(@{$contact_forces[$frame]});
     }
     glutSwapBuffers();
     if ($recording) {
@@ -529,6 +561,7 @@ glEnable(GL_BLEND);
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 $shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'simple.vs'), File::Spec->catdir($Bin, 'simple.fs'));
 $shadow_map_shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'shadow_map.vs'), File::Spec->catdir($Bin, 'shadow_map.fs'));
+$primitive_shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'primitive.vs'), File::Spec->catdir($Bin, 'primitive.fs'));
 #my @vertices = (
 #     0.00,  0.25, 0.00,
 #    -0.25, -0.25, 0.00,
