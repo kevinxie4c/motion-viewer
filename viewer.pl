@@ -309,6 +309,18 @@ sub render {
     glViewport(0, 0, $screen_width, $screen_height);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, $shadow_map_texture);
+
+    $primitive_shader->use;
+    $primitive_shader->set_mat4('view', $camera->view_matrix);
+    $primitive_shader->set_mat4('proj', $camera->proj_matrix);
+    $primitive_shader->set_mat4('model', $identity_mat);
+    $primitive_shader->set_vec3('color', $red);
+    draw_lines(0, 0, 0, 20, 0, 0);
+    $primitive_shader->set_vec3('color', $green);
+    draw_lines(0, 0, 0, 0, 20, 0);
+    $primitive_shader->set_vec3('color', $blue);
+    draw_lines(0, 0, 0, 0, 0, 20);
+    
     $shader->use;
     $shader->set_mat4('lightSpaceMatrix', $light_space_matrix);
     #print "$light_space_matrix\n";
