@@ -85,16 +85,18 @@ for my $file (@ARGV) {
 }
 
 my @contact_forces;
-open my $fh, '<', $contact_force_file;
-while (<$fh>) {
-    my @a = split;
-    for (my $i = 3; $i < @a; $i += 6) {
-        for my $j(0..2) {
-            $a[$i + $j - 3] *= 100;
-            $a[$i + $j] = $a[$i + $j - 3] + $a[$i + $j] / 10;
+if ($contact_force_file) {
+    open my $fh, '<', $contact_force_file;
+    while (<$fh>) {
+        my @a = split;
+        for (my $i = 3; $i < @a; $i += 6) {
+            for my $j(0..2) {
+                $a[$i + $j - 3] *= 100;
+                $a[$i + $j] = $a[$i + $j - 3] + $a[$i + $j] / 10;
+            }
         }
+        push @contact_forces, \@a;
     }
-    push @contact_forces, \@a;
 }
 
 my $identity_mat = GLM::Mat4->new(

@@ -120,7 +120,6 @@ sub keyboard_handler {
 
 sub keyboard_up_handler {
     my ($this, $key) = @_;
-    my ($this, $key) = @_;
     if ($key == ord('X') || $key == ord('x')) {
         $this->{x_down} = 0;
     } elsif ($key == ord('Y') || $key == ord('y')) {
