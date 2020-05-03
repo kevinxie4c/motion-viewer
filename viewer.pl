@@ -64,6 +64,7 @@ my ($light_near, $light_far) = (1, 1000);
 my $geometry_file;
 my $contact_force_file;
 my $zmp_file;
+my $support_polygon_file;
 
 my $primitive_shader;
 
@@ -74,6 +75,7 @@ GetOptions('mass=s'     => \$m_dir,
            'geo=s'      => \$geometry_file,
            'contact=s'  => \$contact_force_file,
            'zmp=s'      => \$zmp_file,
+           'sp=s'       => \$support_polygon_file,
 );
 
 die "need specifying bvh filename\n" unless @ARGV;
@@ -109,6 +111,14 @@ if ($zmp_file) {
     open my $fh, '<', $zmp_file;
     while (<$fh>) {
         push @zmps, [map($_ * 100, split)];
+    }
+}
+
+my @support_polygons;
+if ($support_polygon_file) {
+    open my $fh, '<', $support_polygon_file;
+    while (<$fh>) {
+        push @support_polygons, [map($_ * 100, split)];
     }
 }
 
@@ -291,6 +301,30 @@ sub draw_lines {
     glDrawArrays(GL_LINES, 0, @_ / 3);
 }
 
+sub draw_support_polygon {
+    my @vertices;
+    my $ax = shift @_;
+    my $offset = 0.1;
+    my $ay = $floor_y + $offset;
+    my $az = shift @_;
+    my @n = (0, 1, 0);
+    while (@_) {
+        my $bx = shift @_;
+        my $by = $floor_y + $offset;
+        my $bz = shift @_;
+        my $cx = shift @_;
+        my $cy = $floor_y + $offset;
+        my $cz = shift @_;
+        push @vertices, $ax, $ay, $az, @n;
+        push @vertices, $bx, $by, $bz, @n;
+        push @vertices, $cx, $cy, $cz, @n;
+    }
+    $shader->set_mat4('model', $identity_mat);
+    my $buffer = MotionViewer::Buffer->new(2, @vertices);
+    $buffer->bind;
+    glDrawArrays(GL_TRIANGLES, 0, @vertices / 6);
+}
+
 sub init_shadow_map {
     my $buffer_array = OpenGL::Array->new(1, GL_INT);
     glGenFramebuffers_c(1, $buffer_array->ptr);
@@ -428,6 +462,12 @@ sub render {
         $shader->set_float('alpha', 1.0);
         $shader->set_vec3('color', $red);
         draw_sphere($zmps[$frame][0], $floor_y, $zmps[$frame][1]);
+    }
+
+    if ($frame < @support_polygons && @{$support_polygons[$frame]} >= 6) {
+        $shader->set_float('alpha', 1.0);
+        $shader->set_vec3('color', $green);
+        draw_support_polygon(@{$support_polygons[$frame]});
     }
 
     glDisable(GL_DEPTH_TEST);
