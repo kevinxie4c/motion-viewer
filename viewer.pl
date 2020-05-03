@@ -4,6 +4,7 @@ use OpenGL::Modern qw(:all);
 use OpenGL::GLUT qw(:all);
 use OpenGL::Array;
 use GLM;
+use Math::Trig;
 
 use FindBin qw($Bin);
 use lib $Bin;
@@ -52,6 +53,7 @@ my $floor_y = 0;
 my $floor_half_width = 500;
 my $floor_buffer;
 my $cube_buffer;
+my ($sphere_buffer, $num_vertices_sphere);
 
 my $shadow_map_shader;
 my ($shadow_map_height, $shadow_map_width) = (4096, 4096);
@@ -61,6 +63,7 @@ my ($light_near, $light_far) = (1, 1000);
 
 my $geometry_file;
 my $contact_force_file;
+my $zmp_file;
 
 my $primitive_shader;
 
@@ -69,7 +72,9 @@ GetOptions('mass=s'     => \$m_dir,
            'start=i'    => \$start_frame,
            'floory=f'   => \$floor_y,
            'geo=s'      => \$geometry_file,
-           'contact=s'  => \$contact_force_file);
+           'contact=s'  => \$contact_force_file,
+           'zmp=s'      => \$zmp_file,
+);
 
 die "need specifying bvh filename\n" unless @ARGV;
 my $bvh_file = shift @ARGV;
@@ -96,6 +101,14 @@ if ($contact_force_file) {
             }
         }
         push @contact_forces, \@a;
+    }
+}
+
+my @zmps;
+if ($zmp_file) {
+    open my $fh, '<', $zmp_file;
+    while (<$fh>) {
+        push @zmps, [map($_ * 100, split)];
     }
 }
 
@@ -194,6 +207,63 @@ sub create_cube {
     $cube_buffer = MotionViewer::Buffer->new(2, @vertices);
 }
 
+sub create_sphere {
+    my ($xo, $yo, $zo, $r, $s) = (0, 0, 0, 1, 20); # x, y, z, radius, slice
+    my @vlist;
+    for (my $i = 0; $i < $s; ++$i) {
+        my $theta1 = pi / $s * $i;
+        my $theta2 = pi / $s * ($i + 1);
+        my $y1 = cos($theta1);
+        my $y2 = cos($theta2);
+        my $r1 = sin($theta1);
+        my $r2 = sin($theta2);
+        for (my $j = 0; $j < $s * 2; ++$j) {
+            my $phi1 = pi / $s * $j;
+            my $phi2 = pi / $s * ($j + 1);
+            my $za = $r1 * cos($phi1);
+            my $xa = $r1 * sin($phi1);
+            my $zb = $r2 * cos($phi1);
+            my $xb = $r2 * sin($phi1);
+            my $zc = $r2 * cos($phi2);
+            my $xc = $r2 * sin($phi2);
+            my $zd = $r1 * cos($phi2);
+            my $xd = $r1 * sin($phi2);
+            my ($a, $b, $c, $d);
+            my ($na, $nb, $nc, $nd);
+            $na = GLM::Vec3->new($xa, $y1, $za);
+            $nb = GLM::Vec3->new($xb, $y2, $zb);
+            $nc = GLM::Vec3->new($xc, $y2, $zc);
+            $nd = GLM::Vec3->new($xd, $y1, $zd);
+            $a = $na * $r;
+            $b = $nb * $r;
+            $c = $nc * $r;
+            $d = $nd * $r;
+            my $o = GLM::Vec3->new($xo, $yo, $zo);
+            $a += $o;
+            $b += $o;
+            $c += $o;
+            $d += $o;
+            $a = GLM::Vec4->new($a->x, $a->y, $a->z, 1);
+            $b = GLM::Vec4->new($b->x, $b->y, $b->z, 1);
+            $c = GLM::Vec4->new($c->x, $c->y, $c->z, 1);
+            $d = GLM::Vec4->new($d->x, $d->y, $d->z, 1);
+            $na = GLM::Vec4->new($na->x, $na->y, $na->z, 0);
+            $nb = GLM::Vec4->new($nb->x, $nb->y, $nb->z, 0);
+            $nc = GLM::Vec4->new($nc->x, $nc->y, $nc->z, 0);
+            $nd = GLM::Vec4->new($nd->x, $nd->y, $nd->z, 0);
+            push @vlist, $a, $na;
+            push @vlist, $b, $nb;
+            push @vlist, $c, $nc;
+            push @vlist, $c, $nc;
+            push @vlist, $d, $nd;
+            push @vlist, $a, $na;
+        }
+    }
+    my @vertices = map { ($_->x, $_->y, $_->z) } @vlist;
+    $num_vertices_sphere = @vertices / (3 * 2);
+    $sphere_buffer = MotionViewer::Buffer->new(2, @vertices);
+}
+
 sub draw_floor {
     $floor_buffer->bind;
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -205,6 +275,14 @@ sub draw_cube {
     $shader->set_mat4('model', $translate);
     $cube_buffer->bind;
     glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+sub draw_sphere {
+    die "usage: draw_sphere(x, y, z)" if @_ < 3;
+    my $translate = GLM::Functions::translate($identity_mat, GLM::Vec3->new(@_));
+    $shader->set_mat4('model', $translate);
+    $sphere_buffer->bind;
+    glDrawArrays(GL_TRIANGLES, 0, $num_vertices_sphere);
 }
 
 sub draw_lines {
@@ -345,6 +423,12 @@ sub render {
 
     $bvh->set_position($bvh->at_frame($frame));
     $bvh->draw;
+
+    if ($frame < @zmps && @{$zmps[$frame]} == 2) {
+        $shader->set_float('alpha', 1.0);
+        $shader->set_vec3('color', $red);
+        draw_sphere($zmps[$frame][0], $floor_y, $zmps[$frame][1]);
+    }
 
     glDisable(GL_DEPTH_TEST);
     $shader->set_float('alpha', $alpha);
@@ -610,6 +694,7 @@ $shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
 load_sample;
 create_floor;
 create_cube;
+create_sphere;
 init_shadow_map;
 
 glutMainLoop();
