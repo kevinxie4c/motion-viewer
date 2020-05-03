@@ -307,17 +307,18 @@ sub draw_support_polygon {
     my $offset = 0.1;
     my $ay = $floor_y + $offset;
     my $az = shift @_;
+    my $bx = shift @_;
+    my $by = $floor_y + $offset;
+    my $bz = shift @_;
     my @n = (0, 1, 0);
     while (@_) {
-        my $bx = shift @_;
-        my $by = $floor_y + $offset;
-        my $bz = shift @_;
         my $cx = shift @_;
         my $cy = $floor_y + $offset;
         my $cz = shift @_;
         push @vertices, $ax, $ay, $az, @n;
         push @vertices, $bx, $by, $bz, @n;
         push @vertices, $cx, $cy, $cz, @n;
+        ($bx, $by, $bz) = ($cx, $cy, $cz);
     }
     $shader->set_mat4('model', $identity_mat);
     my $buffer = MotionViewer::Buffer->new(2, @vertices);
