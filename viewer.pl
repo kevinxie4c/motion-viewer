@@ -528,7 +528,7 @@ sub render {
     glutSwapBuffers();
     if ($recording) {
         my $buffer = OpenGL::Array->new($screen_width * $screen_height * 4, GL_BYTE);
-        glReadPixels_c(0, 0, $screen_width, $screen_height, GL_RGBA, GL_BYTE, $buffer->ptr);
+        glReadPixels_c(0, 0, $screen_width, $screen_height, GL_RGBA, GL_UNSIGNED_BYTE, $buffer->ptr);
         print $fh_ffmpeg $buffer->retrieve_data(0, $screen_width * $screen_height * 4);
     }
 }
