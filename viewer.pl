@@ -20,6 +20,7 @@ my $win_id;
 my ($screen_width, $screen_height) = (1280, 720);
 my ($shader, $buffer, $camera);
 my $bvh;
+my $auto_center = 0;
 my ($round, $trial) = (1, 1);
 my ($show_pose, $show_ref) = (1, 0);
 my ($show_m, $show_o) = (1, 1);
@@ -411,6 +412,12 @@ sub destroy_shadow_map {
 }
 
 sub render {
+    if ($auto_center) {
+        my ($x, $y, $z) = $bvh->at_frame($frame); # Assume that the first 3 dofs are translation
+        $camera->center(GLM::Vec3->new($x, $y, $z));
+        $camera->update_view_matrix;
+    }
+
     #glClearColor(0.0, 0.0, 0.0, 0.0);
     glClearColor(0.529, 0.808, 0.922, 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -613,9 +620,7 @@ sub keyboard {
         $num_of_samples += 10;
         glutPostRedisplay;
     } elsif ($key == ord('C') || $key == ord('c')) {
-        my ($x, $y, $z) = $bvh->at_frame($frame); # Assume that the first 3 dofs are translation
-        $camera->center(GLM::Vec3->new($x, $y, $z));
-        $camera->update_view_matrix;
+        $auto_center = !$auto_center;
         glutPostRedisplay;
     } elsif ($key == ord(' ')) {
         $animate = !$animate;
@@ -645,7 +650,7 @@ Keyboard
     R: toggle showing reference.
     M: toggle showing mass-SAMCON.
     O: toggle showing original SAMCON.
-    C: center the character
+    C: toggle centering the character
     Space: animate.
     V: record video.
     9: decrease alpha.
