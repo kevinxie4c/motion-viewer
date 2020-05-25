@@ -5,6 +5,8 @@ use OpenGL::GLUT qw(:all);
 use OpenGL::Array;
 use GLM;
 use Math::Trig;
+use Image::PNG::Libpng ':all';
+use Image::PNG::Const ':all';
 
 use FindBin qw($Bin);
 use lib $Bin;
@@ -47,6 +49,7 @@ my $fps = 10; # 0.1 second per iteration. 10 Hz.
 my $ffmpeg = $^O eq 'MSWin32' ? 'ffmpeg.exe': 'ffmpeg';
 my $fh_ffmpeg;
 my $recording = 0;
+my $png_counter = 0;
 
 my $floor_y = 0;
 #my $floor_y = 6.978;
@@ -535,6 +538,7 @@ sub render {
     glutSwapBuffers();
     if ($recording) {
         my $buffer = OpenGL::Array->new($screen_width * $screen_height * 4, GL_BYTE);
+        glReadBuffer(GL_FRONT);
         glReadPixels_c(0, 0, $screen_width, $screen_height, GL_RGBA, GL_UNSIGNED_BYTE, $buffer->ptr);
         print $fh_ffmpeg $buffer->retrieve_data(0, $screen_width * $screen_height * 4);
     }
@@ -635,6 +639,23 @@ sub keyboard {
         } else {
             close $fh_ffmpeg;
         }
+    } elsif ($key == ord('S') || $key == ord('s')) {
+        my $png = create_write_struct;
+        $png->set_IHDR({
+                height     => $screen_height,
+                width      => $screen_width,
+                bit_depth  => 8,
+                color_type => PNG_COLOR_TYPE_RGB_ALPHA,
+            });
+        my $buffer = OpenGL::Array->new($screen_width * $screen_height * 4, GL_BYTE);
+        glReadBuffer(GL_FRONT);
+        glReadPixels_c(0, 0, $screen_width, $screen_height, GL_RGBA, GL_UNSIGNED_BYTE, $buffer->ptr);
+        my @rows;
+        for (my $i = 0; $i < $screen_height; ++$i) {
+            unshift @rows, $buffer->retrieve_data($i * $screen_width * 4, $screen_width * 4); # use unshift instead of push because we want to flip the png along y axis
+        }
+        $png->set_rows(\@rows);
+        $png->write_png_file(sprintf('img%03d.png', $png_counter++));
     } elsif ($key == ord('H') || $key == ord('h')) {
         print <<'HELP';
 
@@ -653,6 +674,7 @@ Keyboard
     C: toggle centering the character
     Space: animate.
     V: record video.
+    S: screen shot.
     9: decrease alpha.
     0: increase alpha.
     -: decrease number of samples shown.
