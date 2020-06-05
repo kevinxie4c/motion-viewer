@@ -319,6 +319,29 @@ sub sphere_mesh {
     @vlist;
 }
 
+sub load_raw_mesh {
+    my $mesh_file = shift;
+    open my $fh, '<', $mesh_file;
+    my @vlist;
+    while (<$fh>) {
+        my @list = split;
+        my $a = GLM::Vec3->new(splice(@list, 0, 3));
+        my $b = GLM::Vec3->new(splice(@list, 0, 3));
+        my $c = GLM::Vec3->new(splice(@list, 0, 3));
+        my $n = ($b - $a)->cross($c - $a);
+        $n->normalize;
+        $a = GLM::Vec4->new($a->x, $a->y, $a->z, 1);
+        $b = GLM::Vec4->new($b->x, $b->y, $b->z, 1);
+        $c = GLM::Vec4->new($c->x, $c->y, $c->z, 1);
+        $n = GLM::Vec4->new($n->x, $n->y, $n->z, 0);
+        push @vlist, $a, $n;
+        push @vlist, $b, $n;
+        push @vlist, $c, $n;
+    }
+    close $fh;
+    @vlist;
+}
+
 sub load_geometry_config {
     my $this = shift;
     my $filename = shift;
@@ -338,6 +361,10 @@ sub load_geometry_config {
                 push @vlist, cube_mesh(@list);
             } elsif ($shape eq 'sphere') {
                 push @vlist, sphere_mesh(@list);
+            } elsif ($shape eq 'raw_mesh_file') {
+                my $mesh_file = $_;
+                $mesh_file =~ s/^\s*raw_mesh_file\s*//;
+                push @vlist, load_raw_mesh($mesh_file);
             } else {
                 croak "$list[0]: not implemented\n";
             }
