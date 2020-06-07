@@ -42,8 +42,11 @@ my $blue   = GLM::Vec3->new(0.0, 0.0, 1.0);
 my $white  = GLM::Vec3->new(1.0, 1.0, 1.0);
 my $green  = GLM::Vec3->new(0.0, 1.0, 0.0);
 
-my $alpha = 0.1;
+my $alpha = 1;
 my $num_of_samples = 20;
+my $chr_dist = 0;
+my $dist_idx = 2;
+
 my $animate = 0;
 my $fps = 10; # 0.1 second per iteration. 10 Hz.
 my $ffmpeg = $^O eq 'MSWin32' ? 'ffmpeg.exe': 'ffmpeg';
@@ -356,6 +359,7 @@ sub init_shadow_map {
 }
 
 sub create_shadow_map {
+    my $i = shift;
     $shadow_map_shader->use;
     $shadow_map_shader->set_mat4('lightSpaceMatrix', $light_space_matrix);
     glViewport(0, 0, $shadow_map_width, $shadow_map_height);
@@ -366,45 +370,39 @@ sub create_shadow_map {
     draw_floor;
     $bvh->shader($shadow_map_shader);
     my @tmp = $bvh->at_frame($frame);
-    $tmp[0] -= 50;
+    $tmp[$dist_idx] -= $chr_dist;
     $bvh->set_position(@tmp);
 
-    $bvh->set_position($bvh->at_frame($frame));
+    #$bvh->set_position($bvh->at_frame($frame));
     $bvh->draw;
     if ($show_m && $samples_m) {
-        my $count = $num_of_samples;
-        for (@{$samples_m->[$itr]}) {
-            last if $count-- <= 0;
-            if ($show_pose) {
-                $bvh->set_position(@{$_->{pos}});
-                $bvh->draw;
-            }
-            if ($show_ref) {
-                $bvh->set_position(@{$_->{ref}});
-                $bvh->draw;
-            }
+        $_ = $samples_m->[$itr][$i];
+        if ($show_pose) {
+            $bvh->set_position(@{$_->{pos}});
+            $bvh->draw;
+        }
+        if ($show_ref) {
+            $bvh->set_position(@{$_->{ref}});
+            $bvh->draw;
         }
     }
     if ($show_o && $samples_o) {
-        my $count = $num_of_samples;
-        for (@{$samples_o->[$itr]}) {
-            last if $count-- <= 0;
-            if ($show_pose) {
-                my @tmp = @{$_->{pos}};
-                $tmp[0] += 50;
-                $bvh->set_position(@tmp);
+        $_ = $samples_o->[$itr][$i];
+        if ($show_pose) {
+            my @tmp = @{$_->{pos}};
+            $tmp[$dist_idx] += $chr_dist;
+            $bvh->set_position(@tmp);
 
-                $bvh->set_position(@{$_->{pos}});
-                $bvh->draw;
-            }
-            if ($show_ref) {
-                my @tmp = @{$_->{ref}};
-                $tmp[0] += 50;
-                $bvh->set_position(@tmp);
+            #$bvh->set_position(@{$_->{pos}});
+            $bvh->draw;
+        }
+        if ($show_ref) {
+            my @tmp = @{$_->{ref}};
+            $tmp[$dist_idx] += $chr_dist;
+            $bvh->set_position(@tmp);
 
-                $bvh->set_position(@{$_->{ref}});
-                $bvh->draw;
-            }
+            #$bvh->set_position(@{$_->{ref}});
+            $bvh->draw;
         }
     }
 
@@ -421,72 +419,73 @@ sub render {
         $camera->update_view_matrix;
     }
 
-    #glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClearColor(0.529, 0.808, 0.922, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    #$shader->use;
-    #$buffer->bind;
-    #glDrawArrays(GL_TRIANGLES, 0, 3);
-    glEnable(GL_DEPTH_TEST);
+    glClear(GL_ACCUM_BUFFER_BIT);
+    glReadBuffer(GL_BACK); # We want to accumulate the back buffer. Some codes elsewhere might call glReadBuffer(GL_FRONT). Set it back here!
+    for (my $i  = 0; $i < $num_of_samples; ++$i) {
+        #glClearColor(0.0, 0.0, 0.0, 0.0);
+        glClearColor(0.529, 0.808, 0.922, 0.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        #$shader->use;
+        #$buffer->bind;
+        #glDrawArrays(GL_TRIANGLES, 0, 3);
+        glEnable(GL_DEPTH_TEST);
 
-    create_shadow_map;
+        create_shadow_map($i);
 
-    glViewport(0, 0, $screen_width, $screen_height);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, $shadow_map_texture);
+        glViewport(0, 0, $screen_width, $screen_height);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, $shadow_map_texture);
 
-    $primitive_shader->use;
-    $primitive_shader->set_mat4('view', $camera->view_matrix);
-    $primitive_shader->set_mat4('proj', $camera->proj_matrix);
-    $primitive_shader->set_mat4('model', $identity_mat);
-    $primitive_shader->set_vec3('color', $red);
-    draw_lines(0, 0, 0, 20, 0, 0);
-    $primitive_shader->set_vec3('color', $green);
-    draw_lines(0, 0, 0, 0, 20, 0);
-    $primitive_shader->set_vec3('color', $blue);
-    draw_lines(0, 0, 0, 0, 0, 20);
-    
-    $shader->use;
-    $shader->set_mat4('lightSpaceMatrix', $light_space_matrix);
-    #print "$light_space_matrix\n";
-    $shader->set_mat4('view', $camera->view_matrix);
-    $shader->set_mat4('proj', $camera->proj_matrix);
+        #$primitive_shader->use;
+        #$primitive_shader->set_mat4('view', $camera->view_matrix);
+        #$primitive_shader->set_mat4('proj', $camera->proj_matrix);
+        #$primitive_shader->set_mat4('model', $identity_mat);
+        #$primitive_shader->set_vec3('color', $red);
+        #draw_lines(0, 0, 0, 20, 0, 0);
+        #$primitive_shader->set_vec3('color', $green);
+        #draw_lines(0, 0, 0, 0, 20, 0);
+        #$primitive_shader->set_vec3('color', $blue);
+        #draw_lines(0, 0, 0, 0, 0, 20);
+        
+        $shader->use;
+        $shader->set_mat4('lightSpaceMatrix', $light_space_matrix);
+        #print "$light_space_matrix\n";
+        $shader->set_mat4('view', $camera->view_matrix);
+        $shader->set_mat4('proj', $camera->proj_matrix);
 
-    $shader->set_float('alpha', 1.0);
-    $shader->set_vec3('color', $white);
-    $shader->set_mat4('model', $identity_mat);
-    $shader->set_int('enableShadow', 1);
-    draw_floor;
-    $shader->set_int('enableShadow', 0);
-
-    $shader->set_vec3('color', $orange);
-
-    $bvh->shader($shader);
-    my @tmp = $bvh->at_frame($frame);
-    $tmp[0] -= 50;
-    $bvh->set_position(@tmp);
-
-    $bvh->set_position($bvh->at_frame($frame));
-    $bvh->draw;
-
-    if ($frame < @zmps && @{$zmps[$frame]} == 2) {
         $shader->set_float('alpha', 1.0);
-        $shader->set_vec3('color', $red);
-        draw_sphere($zmps[$frame][0], $floor_y, $zmps[$frame][1]);
-    }
+        $shader->set_vec3('color', $white);
+        $shader->set_mat4('model', $identity_mat);
+        $shader->set_int('enableShadow', 1);
+        draw_floor;
+        $shader->set_int('enableShadow', 0);
 
-    if ($frame < @support_polygons && @{$support_polygons[$frame]} >= 6) {
-        $shader->set_float('alpha', 1.0);
-        $shader->set_vec3('color', $green);
-        draw_support_polygon(@{$support_polygons[$frame]});
-    }
+        $shader->set_vec3('color', $orange);
 
-    glDisable(GL_DEPTH_TEST);
-    $shader->set_float('alpha', $alpha);
-    if ($show_m && $samples_m) {
-        my $count = $num_of_samples;
-        for (@{$samples_m->[$itr]}) {
-            last if $count-- <= 0;
+        $bvh->shader($shader);
+        my @tmp = $bvh->at_frame($frame);
+        $tmp[$dist_idx] -= $chr_dist;
+        $bvh->set_position(@tmp);
+
+        #$bvh->set_position($bvh->at_frame($frame));
+        $bvh->draw;
+
+        if ($frame < @zmps && @{$zmps[$frame]} == 2) {
+            $shader->set_float('alpha', 1.0);
+            $shader->set_vec3('color', $red);
+            draw_sphere($zmps[$frame][0], $floor_y, $zmps[$frame][1]);
+        }
+
+        if ($frame < @support_polygons && @{$support_polygons[$frame]} >= 6) {
+            $shader->set_float('alpha', 1.0);
+            $shader->set_vec3('color', $green);
+            draw_support_polygon(@{$support_polygons[$frame]});
+        }
+
+        glDisable(GL_DEPTH_TEST);
+        $shader->set_float('alpha', $alpha);
+        if ($show_m && $samples_m) {
+            $_ = $samples_m->[$itr][$i];
             if ($show_pose) {
                 $shader->set_vec3('color', $blue);
                 $bvh->set_position(@{$_->{pos}});
@@ -500,41 +499,40 @@ sub render {
             #$shader->set_vec3('color', $green);
             #draw_cube(map $_ * 100, @{$_->{zmp}});
         }
-    }
-    if ($show_o && $samples_o) {
-        my $count = $num_of_samples;
-        for (@{$samples_o->[$itr]}) {
-            last if $count-- <= 0;
+        if ($show_o && $samples_o) {
+            $_ = $samples_o->[$itr][$i];
             if ($show_pose) {
                 $shader->set_vec3('color', $red);
 
                 my @tmp = @{$_->{pos}};
-                $tmp[0] += 50;
+                $tmp[$dist_idx] += $chr_dist;
                 $bvh->set_position(@tmp);
 
-                $bvh->set_position(@{$_->{pos}});
+                #$bvh->set_position(@{$_->{pos}});
                 $bvh->draw;
             }
             if ($show_ref) {
                 $shader->set_vec3('color', 0.7 * $red);
                 
                 my @tmp = @{$_->{ref}};
-                $tmp[0] += 50;
+                $tmp[$dist_idx] += $chr_dist;
                 $bvh->set_position(@tmp);
 
-                $bvh->set_position(@{$_->{ref}});
+                #$bvh->set_position(@{$_->{ref}});
                 $bvh->draw;
             }
         }
+        if ($frame < @contact_forces) {
+            $primitive_shader->use;
+            $primitive_shader->set_mat4('view', $camera->view_matrix);
+            $primitive_shader->set_mat4('proj', $camera->proj_matrix);
+            $primitive_shader->set_mat4('model', $identity_mat);
+            $primitive_shader->set_vec3('color', $green);
+            draw_lines(@{$contact_forces[$frame]});
+        }
+        glAccum(GL_ACCUM, 1.0 / $num_of_samples);
     }
-    if ($frame < @contact_forces) {
-        $primitive_shader->use;
-        $primitive_shader->set_mat4('view', $camera->view_matrix);
-        $primitive_shader->set_mat4('proj', $camera->proj_matrix);
-        $primitive_shader->set_mat4('model', $identity_mat);
-        $primitive_shader->set_vec3('color', $green);
-        draw_lines(@{$contact_forces[$frame]});
-    }
+    glAccum(GL_RETURN, 1);
     glutSwapBuffers();
     if ($recording) {
         my $buffer = OpenGL::Array->new($screen_width * $screen_height * 4, GL_BYTE);

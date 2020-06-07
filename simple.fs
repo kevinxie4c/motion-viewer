@@ -14,7 +14,7 @@ uniform int enableShadow;
 
 void main(void)
 {
-    vec3 ambience = vec3(0.1);
+    vec3 ambience = vec3(0.5);
     vec3 lighting = vec3(0.0);
 
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
