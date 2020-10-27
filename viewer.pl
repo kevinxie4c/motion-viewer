@@ -57,7 +57,7 @@ my $png_counter = 0;
 my $floor_y = 0;
 #my $floor_y = 6.978;
 #my $floor_y = -0.257;
-my $floor_half_width = 500;
+my $floor_half_width = 10000;
 my $floor_buffer;
 my $cube_buffer;
 my ($sphere_buffer, $num_vertices_sphere);
@@ -72,6 +72,7 @@ my $geometry_file;
 my $contact_force_file;
 my $zmp_file;
 my $support_polygon_file;
+my $ext_force_file;
 
 my $primitive_shader;
 
@@ -83,6 +84,7 @@ GetOptions('mass=s'     => \$m_dir,
            'contact=s'  => \$contact_force_file,
            'zmp=s'      => \$zmp_file,
            'sp=s'       => \$support_polygon_file,
+           'extforce=s' => \$ext_force_file,
 );
 
 die "need specifying bvh filename\n" unless @ARGV;
@@ -126,6 +128,20 @@ if ($support_polygon_file) {
     open my $fh, '<', $support_polygon_file;
     while (<$fh>) {
         push @support_polygons, [map($_ * 100, split)];
+    }
+}
+
+my @ext_forces;
+if ($ext_force_file) {
+    open my $fh, '<', $ext_force_file;
+    while (<$fh>) {
+        my @a = split;
+        push @ext_forces, {
+            node_name => $a[0],
+            start_time => $a[1],
+            duration => $a[2],
+            force => [@a[3..5]],
+        };
     }
 }
 
@@ -225,7 +241,7 @@ sub create_cube {
 }
 
 sub create_sphere {
-    my ($xo, $yo, $zo, $r, $s) = (0, 0, 0, 1, 20); # x, y, z, radius, slice
+    my ($xo, $yo, $zo, $r, $s) = (0, 0, 0, 3, 20); # x, y, z, radius, slice
     my @vlist;
     for (my $i = 0; $i < $s; ++$i) {
         my $theta1 = pi / $s * $i;
@@ -352,14 +368,14 @@ sub init_shadow_map {
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    my $light_proj = GLM::Functions::ortho(-500, 500, -500, 500, $light_near, $light_far);
-    my $light_view = GLM::Functions::lookAt(GLM::Vec3->new(200), GLM::Vec3->new(0), GLM::Vec3->new(0, 1, 0));
-    $light_space_matrix = $light_proj * $light_view;
 }
 
 sub create_shadow_map {
     my $i = shift;
+    my $light_proj = GLM::Functions::ortho(-500, 500, -500, 500, $light_near, $light_far);
+    #my $light_view = GLM::Functions::lookAt(GLM::Vec3->new(200), GLM::Vec3->new(0), GLM::Vec3->new(0, 1, 0));
+    my $light_view = GLM::Functions::lookAt($camera->center + GLM::Vec3->new(200), $camera->center, GLM::Vec3->new(0, 1, 0));
+    $light_space_matrix = $light_proj * $light_view;
     $shadow_map_shader->use;
     $shadow_map_shader->set_mat4('lightSpaceMatrix', $light_space_matrix);
     glViewport(0, 0, $shadow_map_width, $shadow_map_height);
@@ -470,10 +486,12 @@ sub render {
         #$bvh->set_position($bvh->at_frame($frame));
         $bvh->draw;
 
-        if ($frame < @zmps && @{$zmps[$frame]} == 2) {
-            $shader->set_float('alpha', 1.0);
-            $shader->set_vec3('color', $red);
-            draw_sphere($zmps[$frame][0], $floor_y, $zmps[$frame][1]);
+        for (my $j = 0; $j < 20; ++$j) {
+            if (0 <= $frame - $j && $frame - $j < @zmps && @{$zmps[$frame - $j]} == 2) {
+                $shader->set_float('alpha', 0.9 ** $j);
+                $shader->set_vec3('color', $red);
+                draw_sphere($zmps[$frame - $j][0], $floor_y, $zmps[$frame - $j][1]);
+            }
         }
 
         if ($frame < @support_polygons && @{$support_polygons[$frame]} >= 6) {
@@ -481,6 +499,27 @@ sub render {
             $shader->set_vec3('color', $green);
             draw_support_polygon(@{$support_polygons[$frame]});
         }
+
+        $bvh->update_transform;
+        $primitive_shader->use;
+        $primitive_shader->set_mat4('view', $camera->view_matrix);
+        $primitive_shader->set_mat4('proj', $camera->proj_matrix);
+        $primitive_shader->set_mat4('model', $identity_mat);
+        $primitive_shader->set_vec3('color', $blue);
+        for (@ext_forces) {
+            if ($_->{start_time} <= 0.01 * $frame && 0.01 * $frame <= $_->{start_time} + $_->{duration}) {
+                my $joint = $bvh->joint($_->{node_name});
+                #print "$joint\n";
+                #print $joint->name, "\n";
+                my $transform = $joint->{transform};
+                #print $joint->{transform}, "\n";
+                my $p1 = $transform * GLM::Vec4->new(0, 0, 0, 1);
+                my $p2 = $p1 + GLM::Vec4->new(@{$_->{force}}, 0);
+                #print "$p1 $p2\n";
+                draw_lines($p1->x, $p1->y, $p1->z, $p2->x, $p2->y, $p2->z);
+            }
+        }
+        $shader->use;
 
         glDisable(GL_DEPTH_TEST);
         $shader->set_float('alpha', $alpha);
@@ -654,6 +693,10 @@ sub keyboard {
         }
         $png->set_rows(\@rows);
         $png->write_png_file(sprintf('img%03d.png', $png_counter++));
+    } elsif ($key == ord('A') || $key == ord('a')) {
+        print "yaw: ", $camera->yaw, "\n";
+        print "pitch: ", $camera->pitch, "\n";
+        print "distance:", $camera->distance, "\n";
     } elsif ($key == ord('H') || $key == ord('h')) {
         print <<'HELP';
 
@@ -733,6 +776,12 @@ $primitive_shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'primiti
 #);
 #$buffer = MotionViewer::Buffer->new(1, @vertices);
 $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
+#$camera->yaw(-2.1);
+#$camera->pitch(50);
+#$camera->distance(153);
+$camera->yaw(27);
+$camera->pitch(7.5);
+$camera->distance(200);
 #$shader->use;
 #$shader->set_mat4('view', $camera->view_matrix);
 #$shader->set_mat4('proj', $camera->proj_matrix);
