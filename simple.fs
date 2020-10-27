@@ -21,7 +21,10 @@ void main(void)
     projCoords = projCoords * 0.5 + 0.5;
     float closestDepth = texture(shadowMap, projCoords.xy).r; 
     float currentDepth = projCoords.z;
-    if (enableShadow == 0 || currentDepth - 1e-3 < closestDepth)
+    int outside = 1;
+    if (-1 < projCoords.x && projCoords.x < 1 && -1 < projCoords.y && projCoords.y < 1 && -1 < projCoords.z && projCoords.z < 1)
+        outside = 0;
+    if (outside == 1 || enableShadow == 0 || currentDepth - 1e-3 < closestDepth)
         lighting = lightIntensity * max(0, dot(-lightDir, normal));
     fragColor = vec4((ambience + lighting), alpha) * vec4(color, 1.0);
 }
