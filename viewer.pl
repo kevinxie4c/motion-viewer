@@ -23,6 +23,7 @@ my ($screen_width, $screen_height) = (1280, 720);
 my ($shader, $buffer, $camera);
 my $bvh;
 my $auto_center = 0;
+my $loop = 0;
 my ($round, $trial) = (1, 1);
 my ($show_pose, $show_ref) = (1, 0);
 my ($show_m, $show_o) = (1, 1);
@@ -61,6 +62,8 @@ my $floor_half_width = 10000;
 my $floor_buffer;
 my $cube_buffer;
 my ($sphere_buffer, $num_vertices_sphere);
+my ($cylinder_buffer, $num_vertices_cylinder);
+my ($cone_buffer, $num_vertices_cone);
 
 my $shadow_map_shader;
 my ($shadow_map_height, $shadow_map_width) = (4096, 4096);
@@ -297,6 +300,62 @@ sub create_sphere {
     $sphere_buffer = MotionViewer::Buffer->new(2, @vertices);
 }
 
+sub create_cylinder {
+    my ($r, $h, $s) = (1, 1, 20); # radius, half height, slice
+    my @vlist;
+    for (my $i = 0; $i < $s; ++$i) {
+        my $theta1 = 2 * pi / $s * $i;
+        my $theta2 = 2 * pi / $s * ($i + 1);
+        my $x1 = sin($theta1);
+        my $x2 = sin($theta2);
+        my $y1 = cos($theta1);
+        my $y2 = cos($theta2);
+        my $n1 = GLM::Vec3->new($x1, $y1, 0);
+        my $n2 = GLM::Vec3->new($x2, $y2, 0);
+        my $a = GLM::Vec3->new($x1 * $r, $y1 * $r,  $h);
+        my $b = GLM::Vec3->new($x1 * $r, $y1 * $r, -$h);
+        my $c = GLM::Vec3->new($x2 * $r, $y2 * $r, -$h);
+        my $d = GLM::Vec3->new($x2 * $r, $y2 * $r,  $h);
+        push @vlist, $a, $n1;
+        push @vlist, $b, $n1;
+        push @vlist, $c, $n2;
+        push @vlist, $c, $n2;
+        push @vlist, $d, $n2;
+        push @vlist, $a, $n1;
+    }
+    my @vertices = map { ($_->x, $_->y, $_->z) } @vlist;
+    $num_vertices_cylinder = @vertices / (3 * 2);
+    $cylinder_buffer = MotionViewer::Buffer->new(2, @vertices);
+}
+
+sub create_cone {
+    my ($r, $h, $s) = (1, 1, 20); # radius, height, slice
+    my @vlist;
+    for (my $i = 0; $i < $s; ++$i) {
+        my $theta1 = 2 * pi / $s * $i;
+        my $theta2 = 2 * pi / $s * ($i + 1);
+        my $x1 = sin($theta1);
+        my $x2 = sin($theta2);
+        my $y1 = cos($theta1);
+        my $y2 = cos($theta2);
+        my $v1 = GLM::Vec3->new($x1, $y1, 0)->normalized;
+        my $v2 = GLM::Vec3->new($x2, $y2, 0)->normalized;
+        my $u = GLM::Vec3->new(0, 0, 1);
+        my $n1 = ($h * $v1 + $r * $u)->normalized;
+        my $n2 = ($h * $v2 + $r * $u)->normalized;
+        my $n3 = (($n1 + $n2) / 2)->normalized;
+        my $a = GLM::Vec3->new($x1 * $r, $y1 * $r,  0);
+        my $b = GLM::Vec3->new($x2 * $r, $y2 * $r,  0);
+        my $c = GLM::Vec3->new(       0,        0, $h);
+        push @vlist, $a, $n1;
+        push @vlist, $b, $n2;
+        push @vlist, $c, $n3;
+    }
+    my @vertices = map { ($_->x, $_->y, $_->z) } @vlist;
+    $num_vertices_cone = @vertices / (3 * 2);
+    $cone_buffer = MotionViewer::Buffer->new(2, @vertices);
+}
+
 sub draw_floor {
     $floor_buffer->bind;
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -316,6 +375,66 @@ sub draw_sphere {
     $shader->set_mat4('model', $translate);
     $sphere_buffer->bind;
     glDrawArrays(GL_TRIANGLES, 0, $num_vertices_sphere);
+}
+
+sub draw_cylinder {
+    die "usage: draw_cylinder(x1, y1, z1, x2, y2, z2, r)" if @_ < 7;
+    my ($x1, $y1, $z1, $x2, $y2, $z2, $r) = @_;
+    my $a = GLM::Vec3->new($x1, $y1, $z1);
+    my $b = GLM::Vec3->new($x2, $y2, $z2);
+    my $v = $b - $a;
+    my $scale = GLM::Functions::scale($identity_mat, GLM::Vec3->new($r, $r, $v->length / 2));
+    my $rotate;
+    if (abs($v->x) < 1e-6 && abs($v->y) < 1e-6) {
+        $rotate = $identity_mat;
+    } else {
+        $v->normalize;
+        my $u = GLM::Vec3->new(0, 0, 1);
+        my $axis = $u->cross($v)->normalize;
+        my $angle = acos($u->dot($v));
+        $rotate = GLM::Functions::rotate($identity_mat, $angle, $axis);
+    }
+    my $translate = GLM::Functions::translate($identity_mat, ($a + $b) / 2);
+    #print "$translate\n$rotate\n$scale\n";
+    $shader->set_mat4('model', $translate * $rotate * $scale);
+    $cylinder_buffer->bind;
+    glDrawArrays(GL_TRIANGLES, 0, $num_vertices_cylinder);
+}
+
+sub draw_cone {
+    die "usage: draw_cone(x1, y1, z1, x2, y2, z2, r)" if @_ < 7;
+    my ($x1, $y1, $z1, $x2, $y2, $z2, $r) = @_;
+    my $a = GLM::Vec3->new($x1, $y1, $z1);
+    my $b = GLM::Vec3->new($x2, $y2, $z2);
+    my $v = $b - $a;
+    my $scale = GLM::Functions::scale($identity_mat, GLM::Vec3->new($r, $r, $v->length));
+    my $rotate;
+    if (abs($v->x) < 1e-6 && abs($v->y) < 1e-6) {
+        $rotate = $identity_mat;
+    } else {
+        $v->normalize;
+        my $u = GLM::Vec3->new(0, 0, 1);
+        my $axis = $u->cross($v)->normalize;
+        my $angle = acos($u->dot($v));
+        $rotate = GLM::Functions::rotate($identity_mat, $angle, $axis);
+    }
+    my $translate = GLM::Functions::translate($identity_mat, $a);
+    #print "$translate\n$rotate\n$scale\n";
+    $shader->set_mat4('model', $translate * $rotate * $scale);
+    $cone_buffer->bind;
+    glDrawArrays(GL_TRIANGLES, 0, $num_vertices_cone);
+}
+
+sub draw_axis {
+    die "usage: draw_cone(x1, y1, z1, x2, y2, z2)" if @_ < 6;
+    my ($x1, $y1, $z1, $x2, $y2, $z2) = @_;
+    my ($r1, $r2, $h) = (1, 2, 6);
+    my $a = GLM::Vec3->new($x1, $y1, $z1);
+    my $b = GLM::Vec3->new($x2, $y2, $z2);
+    my $v = ($b - $a)->normalized;
+    my $c = $b + 6 * $v;
+    draw_cylinder($a->x, $a->y, $a->z, $b->x, $b->y, $b->z, $r1);
+    draw_cone($b->x, $b->y, $b->z, $c->x, $c->y, $c->z, $r2);
 }
 
 sub draw_lines {
@@ -500,12 +619,9 @@ sub render {
             draw_support_polygon(@{$support_polygons[$frame]});
         }
 
+
         $bvh->update_transform;
-        $primitive_shader->use;
-        $primitive_shader->set_mat4('view', $camera->view_matrix);
-        $primitive_shader->set_mat4('proj', $camera->proj_matrix);
-        $primitive_shader->set_mat4('model', $identity_mat);
-        $primitive_shader->set_vec3('color', $blue);
+        $shader->set_vec3('color', $blue);
         for (@ext_forces) {
             if ($_->{start_time} <= 0.01 * $frame && 0.01 * $frame <= $_->{start_time} + $_->{duration}) {
                 my $joint = $bvh->joint($_->{node_name});
@@ -516,7 +632,7 @@ sub render {
                 my $p1 = $transform * GLM::Vec4->new(0, 0, 0, 1);
                 my $p2 = $p1 + GLM::Vec4->new(@{$_->{force}}, 0);
                 #print "$p1 $p2\n";
-                draw_lines($p1->x, $p1->y, $p1->z, $p2->x, $p2->y, $p2->z);
+                draw_axis($p1->x, $p1->y, $p1->z, $p2->x, $p2->y, $p2->z);
             }
         }
         $shader->use;
@@ -614,6 +730,8 @@ sub keyboard {
             --$itr;
             glutPostRedisplay;
         }
+    } elsif ($key == ord('L') || $key == ord('l')) {
+        $loop = !$loop;
     } elsif ($key == ord('[')) {
         if ($trial > 0) {
             --$trial;
@@ -704,6 +822,7 @@ Keyboard
     ESC: exit.
     B: previous iteration (frame - 10).
     F: next iteration (frame + 10).
+    L: toggle loop.
     [: previous trial.
     ]: next trial.
     ,: previous round.
@@ -810,6 +929,8 @@ load_sample;
 create_floor;
 create_cube;
 create_sphere;
+create_cylinder;
+create_cone;
 init_shadow_map;
 
 glutMainLoop();

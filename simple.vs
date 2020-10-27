@@ -14,6 +14,6 @@ uniform mat4 lightSpaceMatrix;
 void main(void)
 {
 	gl_Position = proj * view * model * vec4(aPos, 1.0);
-	normal = (model * vec4(aNormal, 0.0)).xyz;
+	normal = transpose(inverse(mat3(model))) * aNormal;
 	fragPosLightSpace = lightSpaceMatrix * model * vec4(aPos, 1.0);
 }
