@@ -704,8 +704,10 @@ sub timer {
             $frame += 10;
             ++$itr;
         } else {
-            $frame = $start_frame;
-            $itr = 0;
+            if ($loop) {
+                $frame = $start_frame;
+                $itr = 0;
+            }
         }
         glutTimerFunc(1.0 / $fps * 1000, \&timer);
         glutPostRedisplay;
@@ -789,7 +791,7 @@ sub keyboard {
     } elsif ($key == ord('V') || $key == ord('v')) {
         $recording = !$recording;
         if ($recording) {
-            open $fh_ffmpeg, '|-', "$ffmpeg -r $fps -f rawvideo -pix_fmt rgba -s ${screen_width}x${screen_height} -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 1 -vf vflip output.mp4";
+            open $fh_ffmpeg, '|-', "$Bin/$ffmpeg -r $fps -f rawvideo -pix_fmt rgba -s ${screen_width}x${screen_height} -i - -threads 0 -preset fast -y -pix_fmt yuv420p -crf 1 -vf vflip output.mp4";
             binmode $fh_ffmpeg;
         } else {
             close $fh_ffmpeg;
