@@ -177,7 +177,7 @@ sub load_sample {
     }
 }
 
-$num_of_samples = 1 if $m_dir eq '' && $o_dir eq '';
+$num_of_samples = 1 if $m_dir && $o_dir;
 
 # a     d
 #  +---+
