@@ -76,6 +76,7 @@ my $contact_force_file;
 my $zmp_file;
 my $support_polygon_file;
 my $ext_force_file;
+my $winsize;
 
 my $primitive_shader;
 
@@ -88,11 +89,16 @@ GetOptions('mass=s'     => \$m_dir,
            'zmp=s'      => \$zmp_file,
            'sp=s'       => \$support_polygon_file,
            'extforce=s' => \$ext_force_file,
+           'winsize=s'  => \$winsize,
 );
 
 die "need specifying bvh filename\n" unless @ARGV;
 my $bvh_file = shift @ARGV;
 my $frame = $start_frame;
+if (defined($winsize) && $winsize =~ /(\d+)x(\d+)/) {
+    $screen_width = $1;
+    $screen_height = $2;
+}
 
 my @motions;
 for my $file (@ARGV) {
@@ -815,10 +821,12 @@ sub keyboard {
         }
         $png->set_rows(\@rows);
         $png->write_png_file(sprintf('img%03d.png', $png_counter++));
-    } elsif ($key == ord('A') || $key == ord('a')) {
+    } elsif ($key == ord('I') || $key == ord('i')) {
         print "yaw: ", $camera->yaw, "\n";
         print "pitch: ", $camera->pitch, "\n";
-        print "distance:", $camera->distance, "\n";
+        print "distance: ", $camera->distance, "\n";
+        print "center: ", $camera->center, "\n";
+        print "frame #: $frame\n";
     } elsif ($key == ord('H') || $key == ord('h')) {
         print <<'HELP';
 
@@ -836,6 +844,7 @@ Keyboard
     M: toggle showing mass-SAMCON.
     O: toggle showing original SAMCON.
     C: toggle centering the character
+    I: print info.
     Space: animate.
     V: record video.
     S: screen shot.

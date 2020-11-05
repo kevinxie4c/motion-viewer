@@ -407,7 +407,7 @@ sub load_geometry_config {
                 $mesh_file =~ s/^\s*raw_mesh_file\s*//;
                 push @vlist, load_raw_mesh($mesh_file);
             } else {
-                croak "$list[0]: not implemented\n";
+                croak "$shape: not implemented\n";
             }
         } elsif ($state == 1) {
             $node = $_;
