@@ -189,7 +189,7 @@ sub load_sample {
     }
 }
 
-$num_of_samples = 1 if $m_dir && $o_dir;
+#$num_of_samples = 1 unless $m_dir && $o_dir;
 
 # a     d
 #  +---+
@@ -577,7 +577,8 @@ sub render {
 
     glClear(GL_ACCUM_BUFFER_BIT);
     glReadBuffer(GL_BACK); # We want to accumulate the back buffer. Some codes elsewhere might call glReadBuffer(GL_FRONT). Set it back here!
-    for (my $i  = 0; $i < $num_of_samples; ++$i) {
+    my $num_of_actual_samples = defined($samples_m) || defined($samples_o) ? $num_of_samples : 1;
+    for (my $i  = 0; $i < $num_of_actual_samples; ++$i) {
         #glClearColor(0.0, 0.0, 0.0, 0.0);
         glClearColor(0.529, 0.808, 0.922, 0.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -710,7 +711,7 @@ sub render {
             $primitive_shader->set_vec3('color', $green);
             draw_lines(@{$contact_forces[$frame]});
         }
-        glAccum(GL_ACCUM, 1.0 / $num_of_samples);
+        glAccum(GL_ACCUM, 1.0 / $num_of_actual_samples);
     }
     glAccum(GL_RETURN, 1);
     glutSwapBuffers();
