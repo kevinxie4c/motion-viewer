@@ -58,7 +58,7 @@ my $png_counter = 0;
 my $floor_y = 0;
 #my $floor_y = 6.978;
 #my $floor_y = -0.257;
-my $floor_half_width = 10000;
+my ($floor_width, $floor_height) = (1000, 1000);
 my $floor_buffer;
 my $cube_buffer;
 my ($sphere_buffer, $num_vertices_sphere);
@@ -76,7 +76,8 @@ my $contact_force_file;
 my $zmp_file;
 my $support_polygon_file;
 my $ext_force_file;
-my $winsize;
+my $win_size;
+my $floor_size;
 
 my $primitive_shader;
 
@@ -89,15 +90,20 @@ GetOptions('mass=s'     => \$m_dir,
            'zmp=s'      => \$zmp_file,
            'sp=s'       => \$support_polygon_file,
            'extforce=s' => \$ext_force_file,
-           'winsize=s'  => \$winsize,
+           'winsize=s'  => \$win_size,
+           'floorsize=s'=> \$floor_size,
 );
 
 die "need specifying bvh filename\n" unless @ARGV;
 my $bvh_file = shift @ARGV;
 my $frame = $start_frame;
-if (defined($winsize) && $winsize =~ /(\d+)x(\d+)/) {
+if (defined($win_size) && $win_size =~ /(\d+)x(\d+)/) {
     $screen_width = $1;
     $screen_height = $2;
+}
+if (defined($floor_size) && $floor_size =~ /(\d+)x(\d+)/) {
+    $floor_width = $1;
+    $floor_height = $2;
 }
 
 my @motions;
@@ -194,10 +200,10 @@ $num_of_samples = 1 if $m_dir && $o_dir;
 # b     c
 sub create_floor {
     my @n = (0, 1, 0);
-    my @a = (-$floor_half_width, $floor_y, -$floor_half_width);
-    my @b = (-$floor_half_width, $floor_y,  $floor_half_width);
-    my @c = ( $floor_half_width, $floor_y,  $floor_half_width);
-    my @d = ( $floor_half_width, $floor_y, -$floor_half_width);
+    my @a = (-$floor_width / 2, $floor_y, -$floor_height / 2);
+    my @b = (-$floor_width / 2, $floor_y,  $floor_height / 2);
+    my @c = ( $floor_width / 2, $floor_y,  $floor_height / 2);
+    my @d = ( $floor_width / 2, $floor_y, -$floor_height / 2);
     $floor_buffer = MotionViewer::Buffer->new(2, @a, @n, @b, @n, @c, @n, @a, @n, @c, @n, @d, @n);
 }
 
@@ -454,7 +460,7 @@ sub draw_lines {
 sub draw_support_polygon {
     my @vertices;
     my $ax = shift @_;
-    my $offset = 0.1;
+    my $offset = 0.5;
     my $ay = $floor_y + $offset;
     my $az = shift @_;
     my $bx = shift @_;
@@ -555,11 +561,18 @@ sub create_shadow_map {
 sub destroy_shadow_map {
 }
 
+my ($prev_x, $prev_y, $prev_z);
+my ($prev_x_weight, $prev_y_weight, $prev_z_weight) = (1, 1, 0);
+
 sub render {
     if ($auto_center) {
         my ($x, $y, $z) = $bvh->at_frame($frame); # Assume that the first 3 dofs are translation
+        $x = $prev_x_weight * $prev_x + (1 - $prev_x_weight) * $x;
+        $y = $prev_y_weight * $prev_y + (1 - $prev_y_weight) * $y;
+        $z = $prev_z_weight * $prev_z + (1 - $prev_z_weight) * $z;
         $camera->center(GLM::Vec3->new($x, $y, $z));
         $camera->update_view_matrix;
+        ($prev_x, $prev_y, $prev_z) = ($x, $y, $z); 
     }
 
     glClear(GL_ACCUM_BUFFER_BIT);
@@ -600,7 +613,9 @@ sub render {
         $shader->set_vec3('color', $white);
         $shader->set_mat4('model', $identity_mat);
         $shader->set_int('enableShadow', 1);
+        $shader->set_int('checker', 1);
         draw_floor;
+        $shader->set_int('checker', 0);
         $shader->set_int('enableShadow', 0);
 
         $shader->set_vec3('color', $orange);
@@ -613,11 +628,13 @@ sub render {
         #$bvh->set_position($bvh->at_frame($frame));
         $bvh->draw;
 
-        for (my $j = 0; $j < 20; ++$j) {
-            if (0 <= $frame - $j && $frame - $j < @zmps && @{$zmps[$frame - $j]} == 2) {
-                $shader->set_float('alpha', 0.9 ** $j);
-                $shader->set_vec3('color', $red);
-                draw_sphere($zmps[$frame - $j][0], $floor_y, $zmps[$frame - $j][1]);
+        if (@zmps) {
+            for (my $j = 0; $j < 20; ++$j) {
+                if (0 <= $frame - $j && $frame - $j < @zmps && @{$zmps[$frame - $j]} == 2) {
+                    $shader->set_float('alpha', 0.9 ** $j);
+                    $shader->set_vec3('color', $red);
+                    draw_sphere($zmps[$frame - $j][0], $floor_y, $zmps[$frame - $j][1]);
+                }
             }
         }
 
@@ -717,6 +734,9 @@ sub timer {
                 $itr = 0;
             }
         }
+        if (glutGetWindow == 0) {
+            return;
+        }
         glutTimerFunc(1.0 / $fps * 1000, \&timer);
         glutPostRedisplay;
     }
@@ -790,6 +810,7 @@ sub keyboard {
         glutPostRedisplay;
     } elsif ($key == ord('C') || $key == ord('c')) {
         $auto_center = !$auto_center;
+        ($prev_x, $prev_y, $prev_z) = $bvh->at_frame($frame);
         glutPostRedisplay;
     } elsif ($key == ord(' ')) {
         $animate = !$animate;
@@ -914,6 +935,7 @@ $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
 $camera->yaw(27);
 $camera->pitch(7.5);
 $camera->distance(200);
+$camera->far(10000);
 #$shader->use;
 #$shader->set_mat4('view', $camera->view_matrix);
 #$shader->set_mat4('proj', $camera->proj_matrix);
@@ -937,6 +959,7 @@ if (@motions) {
 $shader->use;
 $shader->set_vec3('lightIntensity', GLM::Vec3->new(1));
 $shader->set_vec3('lightDir', GLM::Vec3->new(-1)->normalized);
+$shader->set_int('checker', 0);
 
 load_sample;
 create_floor;
