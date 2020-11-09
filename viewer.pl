@@ -71,6 +71,7 @@ my ($shadow_map_height, $shadow_map_width) = (4096, 4096);
 my ($shadow_map_buffer, $shadow_map_texture);
 my $light_space_matrix;
 my ($light_near, $light_far) = (1, 1000);
+my $camera_cfg_file;
 
 my $geometry_file;
 my $contact_force_file;
@@ -95,6 +96,7 @@ GetOptions('mass=s'     => \$m_dir,
            'floorsize=s'=> \$floor_size,
            'chrdist=i'  => \$chr_dist,
            'distidx=i'  => \$dist_idx,
+           'camera=s'   => \$camera_cfg_file,
 );
 
 die "need specifying bvh filename\n" unless @ARGV;
@@ -933,13 +935,28 @@ $primitive_shader = MotionViewer::Shader->load(File::Spec->catdir($Bin, 'primiti
 #);
 #$buffer = MotionViewer::Buffer->new(1, @vertices);
 $camera = MotionViewer::Camera->new(aspect => $screen_width / $screen_height);
-#$camera->yaw(-2.1);
-#$camera->pitch(50);
-#$camera->distance(153);
-$camera->yaw(27);
-$camera->pitch(7.5);
-$camera->distance(200);
-$camera->far(10000);
+if (defined($camera_cfg_file)) {
+    open my $fh, '<', $camera_cfg_file or die "cannot open $camera_cfg_file";
+    while (<$fh>) {
+        chomp;
+        if (/^\s*yaw:\s*(.*)$/) {
+            $camera->yaw($1);
+        } elsif (/^\s*pitch:\s*(.*)/) {
+            $camera->pitch($1);
+        } elsif (/^\s*distance:\s*(.*)/) {
+            $camera->distance($1);
+        } elsif (/^\s*near:\s*(.*)/) {
+            $camera->near($1);
+        } elsif (/^\s*far:\s*(.*)/) {
+            $camera->far($1);
+        } elsif (/^\s*center:\s*\[(.*)\]/) {
+            $camera->center(GLM::Vec3->new(split(' ', $1)));
+        }
+    }
+    close $fh;
+}
+$camera->update_view_matrix;
+
 #$shader->use;
 #$shader->set_mat4('view', $camera->view_matrix);
 #$shader->set_mat4('proj', $camera->proj_matrix);
