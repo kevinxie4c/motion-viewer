@@ -45,8 +45,9 @@ my $green  = GLM::Vec3->new(0.0, 1.0, 0.0);
 
 my $alpha = 1;
 my $num_of_samples = 20;
-my $chr_dist = 0;
-my $dist_idx = 2;
+
+my $chr_dist = 0; # for separating the characters
+my $dist_idx = 0;
 
 my $animate = 0;
 my $fps = 10; # 0.1 second per iteration. 10 Hz.
@@ -92,6 +93,8 @@ GetOptions('mass=s'     => \$m_dir,
            'extforce=s' => \$ext_force_file,
            'winsize=s'  => \$win_size,
            'floorsize=s'=> \$floor_size,
+           'chrdist=i'  => \$chr_dist,
+           'distidx=i'  => \$dist_idx,
 );
 
 die "need specifying bvh filename\n" unless @ARGV;
