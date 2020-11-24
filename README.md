@@ -29,3 +29,8 @@ perl viewer.pl [OPTION] MOTION_FILE [MOTION_FRAME_DATA]
 **--floorsize wxh**: set the floor size at _w_ by _h_;
 
 **--camera camera_file**: use _camera_file_ for camera configuration.
+
+See Also
+https://github.com/kevinxie4c/mass-SAMCON
+
+https://github.com/kevinxie4c/inverse_dynamics
